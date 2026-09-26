@@ -103,27 +103,6 @@ def create_app(config: dict | None = None, store: Store | None = None, runner=No
         song = store.get_song(song_id)
         return jsonify(song) if song else error("Song not found", 404)
 
-    @app.put("/api/songs/<song_id>/segments/<int:index>")
-    def edit_segment(song_id, index):
-        body = request.get_json(silent=True) or {}
-        try:
-            timeline = store.update_segment(song_id, index, str(body.get("label", "")),
-                                            bool(body.get("apply_to_all", False)))
-        except KeyError:
-            return error("Song not found", 404)
-        except IndexError:
-            return error("Chord index out of range", 404)
-        except ValueError as e:
-            return error(str(e), 400)
-        return jsonify(timeline)
-
-    @app.post("/api/songs/<song_id>/reset")
-    def reset_song(song_id):
-        try:
-            return jsonify(store.reset_song(song_id))
-        except KeyError:
-            return error("Song not found", 404)
-
     @app.delete("/api/songs/<song_id>")
     def delete_song(song_id):
         return ("", 204) if store.delete_song(song_id) else error("Song not found", 404)

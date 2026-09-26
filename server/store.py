@@ -6,8 +6,6 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from server.theory.chord import SHARPS, parse, to_harte
-
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS songs (
     id TEXT PRIMARY KEY,
@@ -17,7 +15,6 @@ CREATE TABLE IF NOT EXISTS songs (
     key TEXT NOT NULL,
     tempo REAL NOT NULL,
     timeline_json TEXT NOT NULL,
-    original_json TEXT NOT NULL,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -90,14 +87,14 @@ class Store:
         meta = (timeline["title"], timeline["duration"], timeline["key"], timeline["tempo"])
         existing = self.get_song_by_video(timeline["video_id"])
         if existing:
-            self._exec("UPDATE songs SET title=?, duration=?, key=?, tempo=?, timeline_json=?, original_json=?, "
-                       "updated_at=? WHERE id=?", (*meta, blob, blob, _now(), existing["id"]))
+            self._exec("UPDATE songs SET title=?, duration=?, key=?, tempo=?, timeline_json=?, "
+                       "updated_at=? WHERE id=?", (*meta, blob, _now(), existing["id"]))
             return existing["id"]
         song_id = uuid.uuid4().hex
         now = _now()
-        self._exec("INSERT INTO songs (id, video_id, title, duration, key, tempo, timeline_json, original_json, "
-                   "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                   (song_id, timeline["video_id"], *meta, blob, blob, now, now))
+        self._exec("INSERT INTO songs (id, video_id, title, duration, key, tempo, timeline_json, "
+                   "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                   (song_id, timeline["video_id"], *meta, blob, now, now))
         return song_id
 
     @staticmethod
@@ -119,36 +116,6 @@ class Store:
     def list_songs(self) -> list[dict]:
         rows = self._exec("SELECT * FROM songs ORDER BY updated_at DESC").fetchall()
         return [self._song(r, with_timeline=False) for r in rows]
-
-    def _write_timeline(self, song_id: str, timeline: dict) -> None:
-        self._exec("UPDATE songs SET timeline_json = ?, updated_at = ? WHERE id = ?",
-                   (json.dumps(timeline), _now(), song_id))
-
-    def update_segment(self, song_id: str, index: int, label: str, apply_to_all: bool = False) -> dict:
-        song = self.get_song(song_id)
-        if song is None:
-            raise KeyError(song_id)
-        timeline = song["timeline"]
-        segments = timeline["segments"]
-        if not 0 <= index < len(segments):
-            raise IndexError(index)
-        chord = parse(label)
-        new_label = to_harte(chord)
-        bass = None if chord is None else SHARPS[chord.bass if chord.bass is not None else chord.root]
-        target = segments[index]["label"]
-        for i, seg in enumerate(segments):
-            if i == index or (apply_to_all and seg["label"] == target):
-                seg.update(label=new_label, bass=bass, edited=True)
-        self._write_timeline(song_id, timeline)
-        return timeline
-
-    def reset_song(self, song_id: str) -> dict:
-        row = self._exec("SELECT original_json FROM songs WHERE id = ?", (song_id,)).fetchone()
-        if row is None:
-            raise KeyError(song_id)
-        timeline = json.loads(row["original_json"])
-        self._write_timeline(song_id, timeline)
-        return timeline
 
     def delete_song(self, song_id: str) -> bool:
         return self._exec("DELETE FROM songs WHERE id = ?", (song_id,)).rowcount > 0
