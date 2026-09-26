@@ -8,7 +8,6 @@ export function AppRoutes() {
     <>
       <header className="topbar">
         <Link to="/" className="brand">Chordarium</Link>
-        <span className="soon" title="Publishing chord sheets arrives in Phase 2">Public library · coming soon</span>
       </header>
       <Routes>
         <Route path="/" element={<HomePage />} />

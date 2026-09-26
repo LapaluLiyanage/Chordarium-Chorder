@@ -31,7 +31,6 @@ button { cursor: pointer; }
 
 .topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-bottom: 1px solid var(--line); }
 .brand { font-family: var(--chord-font); font-weight: 800; letter-spacing: -0.01em; text-decoration: none; font-size: 1.2rem; }
-.soon { color: var(--muted); font-size: 0.85rem; }
 .page { max-width: 1200px; margin: 0 auto; padding: 24px 16px 64px; }
 
 .button { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); text-decoration: none; font-weight: 600; }

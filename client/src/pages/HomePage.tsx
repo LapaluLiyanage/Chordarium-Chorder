@@ -17,6 +17,7 @@ export function HomePage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [songs, setSongs] = useState<SongSummary[] | null>(null)
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     api.songs().then(setSongs).catch(() => setSongs([]))
@@ -68,26 +69,35 @@ export function HomePage() {
       </form>
 
       <h2>Recent songs</h2>
+      {songs !== null && songs.length > 0 && (
+        <input type="search" aria-label="Search songs by title" placeholder="Search by title…"
+          value={query} onChange={(e) => setQuery(e.target.value)} />
+      )}
       {songs === null ? <p className="muted">Loading…</p> : songs.length === 0 ? (
         <p className="muted">No songs yet — analyze your first link above.</p>
-      ) : (
-        <div className="library">
-          {songs.map((s) => (
-            <Link key={s.id} to={`/songs/${s.id}`} className="song-card" aria-label={s.title}>
-              <div className="song-thumb">
-                <img src={`https://i.ytimg.com/vi/${s.video_id}/mqdefault.jpg`} alt="" loading="lazy" />
-                <span className="song-duration">{formatDuration(s.duration)}</span>
-              </div>
-              <div>
-                <strong>{s.title}</strong>
-                <div className="muted">
-                  <span className="pill">{formatKey(s.key)}</span> · {Math.round(s.tempo)} BPM
+      ) : (() => {
+        const filtered = songs.filter((s) => s.title.toLowerCase().includes(query.trim().toLowerCase()))
+        return filtered.length === 0 ? (
+          <p className="muted">No songs match “{query}”.</p>
+        ) : (
+          <div className="library">
+            {filtered.map((s) => (
+              <Link key={s.id} to={`/songs/${s.id}`} className="song-card" aria-label={s.title}>
+                <div className="song-thumb">
+                  <img src={`https://i.ytimg.com/vi/${s.video_id}/mqdefault.jpg`} alt="" loading="lazy" />
+                  <span className="song-duration">{formatDuration(s.duration)}</span>
                 </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+                <div>
+                  <strong>{s.title}</strong>
+                  <div className="muted">
+                    <span className="pill">{formatKey(s.key)}</span> · {Math.round(s.tempo)} BPM
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )
+      })()}
     </main>
   )
 }

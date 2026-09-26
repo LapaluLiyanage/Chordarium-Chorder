@@ -70,4 +70,28 @@ describe('HomePage', () => {
     renderHome()
     expect(await screen.findByText(/no songs yet/i)).toBeInTheDocument()
   })
+
+  it('filters the library by title', async () => {
+    mocked.songs.mockResolvedValue([
+      { id: 's1', video_id: 'a', title: 'Autumn Leaves', duration: 200, key: 'G:min', tempo: 124, created_at: '', updated_at: '' },
+      { id: 's2', video_id: 'b', title: 'Blue Bossa', duration: 180, key: 'C:min', tempo: 130, created_at: '', updated_at: '' },
+    ])
+    const user = userEvent.setup()
+    renderHome()
+    await screen.findByRole('link', { name: /autumn leaves/i })
+    await user.type(screen.getByLabelText(/search songs/i), 'blue')
+    expect(screen.queryByRole('link', { name: /autumn leaves/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /blue bossa/i })).toBeInTheDocument()
+  })
+
+  it('shows a no-matches message when the filter matches nothing', async () => {
+    mocked.songs.mockResolvedValue([{
+      id: 's1', video_id: 'a', title: 'Autumn Leaves', duration: 200, key: 'G:min', tempo: 124, created_at: '', updated_at: '',
+    }])
+    const user = userEvent.setup()
+    renderHome()
+    await screen.findByRole('link', { name: /autumn leaves/i })
+    await user.type(screen.getByLabelText(/search songs/i), 'zzz')
+    expect(await screen.findByText(/no songs match/i)).toBeInTheDocument()
+  })
 })
