@@ -7,11 +7,12 @@ import { ChordLane } from '../components/ChordLane'
 import { Controls, type LoopRange } from '../components/Controls'
 import { DiagramPanel } from '../components/DiagramPanel'
 import { ExportModal } from '../components/ExportModal'
+import { useChordOverrides } from '../hooks/useChordOverrides'
 import { useViewSettings } from '../hooks/useViewSettings'
 import { useYouTubePlayer } from '../hooks/useYouTubePlayer'
 import { activeIndex, beatsUntil, isLowConfidence, upcomingIndex } from '../sync'
 import { formatKey, keySpelling, parse, render, simplify, transpose } from '../theory/chord'
-import type { Song, Timeline } from '../types'
+import type { Song } from '../types'
 
 export function TrackerPage() {
   const { songId = '' } = useParams()
@@ -31,12 +32,13 @@ export function TrackerPage() {
     )
   }
   if (!song) return <main className="page"><p className="muted">Loading…</p></main>
-  return <Tracker song={song} onTimeline={(timeline) => setSong({ ...song, timeline })} />
+  return <Tracker song={song} />
 }
 
-function Tracker({ song, onTimeline }: { song: Song; onTimeline(t: Timeline): void }) {
+function Tracker({ song }: { song: Song }) {
   const t = song.timeline
   const [settings, update] = useViewSettings(song.id)
+  const [segments, applyOverride, resetOverrides] = useChordOverrides(song.id, t.segments)
   const player = useYouTubePlayer('yt-player', t.video_id)
   const [loop, setLoop] = useState<LoopRange>({ a: null, b: null })
   const [editMode, setEditMode] = useState(false)
@@ -47,19 +49,19 @@ function Tracker({ song, onTimeline }: { song: Song; onTimeline(t: Timeline): vo
   const shift = settings.transpose - settings.capo
   const tonic = keySpelling(t.key, shift)
   const symbols = useMemo(
-    () => t.segments.map((s) => render(s.label, { transpose: settings.transpose, capo: settings.capo, simplify: settings.simplify, tonic })),
-    [t.segments, settings.transpose, settings.capo, settings.simplify, tonic],
+    () => segments.map((s) => render(s.label, { transpose: settings.transpose, capo: settings.capo, simplify: settings.simplify, tonic })),
+    [segments, settings.transpose, settings.capo, settings.simplify, tonic],
   )
 
-  const idx = activeIndex(t.segments, player.time)
-  const next = upcomingIndex(t.segments, player.time)
-  const beatsToNext = next >= 0 ? beatsUntil(t.beats, player.time, t.segments[next].start) : 0
+  const idx = activeIndex(segments, player.time)
+  const next = upcomingIndex(segments, player.time)
+  const beatsToNext = next >= 0 ? beatsUntil(t.beats, player.time, segments[next].start) : 0
   const currentChord = useMemo(() => {
     if (idx < 0) return null
-    let c = parse(t.segments[idx].label)
+    let c = parse(segments[idx].label)
     if (settings.simplify) c = simplify(c)
     return transpose(c, shift)
-  }, [idx, t.segments, settings.simplify, shift])
+  }, [idx, segments, settings.simplify, shift])
 
   const { setRate, ready, seek, time } = player
   useEffect(() => {
@@ -70,10 +72,10 @@ function Tracker({ song, onTimeline }: { song: Song; onTimeline(t: Timeline): vo
     if (loop.a !== null && loop.b !== null && loop.b > loop.a && time > loop.b) seek(loop.a)
   }, [time, loop, seek])
 
-  async function applyEdit(label: string, applyToAll: boolean) {
+  function applyEdit(label: string, applyToAll: boolean) {
     if (editing === null) return
     try {
-      onTimeline(await api.editSegment(song.id, editing, label, applyToAll))
+      applyOverride(editing, label, applyToAll)
       setEditing(null)
       setActionError(null)
     } catch (e) {
@@ -81,12 +83,9 @@ function Tracker({ song, onTimeline }: { song: Song; onTimeline(t: Timeline): vo
     }
   }
 
-  async function resetEdits() {
-    try {
-      onTimeline(await api.reset(song.id))
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e))
-    }
+  function resetEdits() {
+    resetOverrides()
+    setActionError(null)
   }
 
   return (
@@ -110,9 +109,9 @@ function Tracker({ song, onTimeline }: { song: Song; onTimeline(t: Timeline): vo
       <div className="tracker-top">
         <div className="player"><div id="yt-player" /></div>
         <ChordHero current={idx >= 0 ? symbols[idx] : null} next={next >= 0 ? symbols[next] : null} beatsToNext={beatsToNext}
-          lowConfidence={idx >= 0 && isLowConfidence(t.segments[idx].confidence)} />
+          lowConfidence={idx >= 0 && isLowConfidence(segments[idx].confidence)} />
       </div>
-      <ChordLane segments={t.segments} symbols={symbols} beats={t.beats} downbeats={t.downbeats} duration={t.duration}
+      <ChordLane segments={segments} symbols={symbols} beats={t.beats} downbeats={t.downbeats} duration={t.duration}
         time={player.time} editMode={editMode} onSeek={seek} onEdit={setEditing} />
       <div className="tracker-bottom">
         <DiagramPanel chord={currentChord} label={idx >= 0 ? symbols[idx] : 'N.C.'} />
@@ -122,9 +121,12 @@ function Tracker({ song, onTimeline }: { song: Song; onTimeline(t: Timeline): vo
           onReset={resetEdits} onExport={() => setExporting(true)} />
       </div>
       {editing !== null && (
-        <ChordEditor segment={t.segments[editing]} shift={shift} tonic={tonic} onApply={applyEdit} onClose={() => setEditing(null)} />
+        <ChordEditor segment={segments[editing]} shift={shift} tonic={tonic} onApply={applyEdit} onClose={() => setEditing(null)} />
       )}
-      {exporting && <ExportModal songId={song.id} settings={settings} onClose={() => setExporting(false)} />}
+      {exporting && (
+        <ExportModal songId={song.id} title={t.title} timeline={{ ...t, segments }} settings={settings}
+          onClose={() => setExporting(false)} />
+      )}
     </main>
   )
 }
