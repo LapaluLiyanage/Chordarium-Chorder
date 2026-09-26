@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { api, ApiError, exportUrl } from './api'
+import { api, ApiError, slugTitle } from './api'
 
 function reply(status: number, body?: unknown) {
   return new Response(body === undefined ? null : JSON.stringify(body), {
@@ -33,20 +33,33 @@ describe('api', () => {
     await expect(api.deleteSong('s1')).resolves.toBeUndefined()
   })
 
-  it('sends segment edits with apply_to_all', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(reply(200, { segments: [] }))
+  it('posts the timeline and returns a blob for exports', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('pdf-bytes', { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
-    await api.editSegment('s1', 3, 'G:maj', true)
+    const timeline = { segments: [] } as unknown as import('./types').Timeline
+    const result = await api.exportSong('s1', timeline, { fmt: 'chordpro', transpose: -2, capo: 3, simplify: true, barsPerRow: 8 })
+    expect(await result.text()).toBe('pdf-bytes')
     const [url, init] = fetchMock.mock.calls[0]
-    expect(url).toBe('/api/songs/s1/segments/3')
-    expect(init.method).toBe('PUT')
-    expect(JSON.parse(init.body)).toEqual({ label: 'G:maj', apply_to_all: true })
+    expect(url).toBe('/api/songs/s1/export?fmt=chordpro&transpose=-2&capo=3&simplify=1&bars_per_row=8')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual({ timeline })
+  })
+
+  it('turns a failed export into an ApiError with the server message', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(reply(404, { error: 'Song not found' })))
+    const err = await api.exportSong('s1', {} as unknown as import('./types').Timeline, { fmt: 'pdf', transpose: 0, capo: 0, simplify: false, barsPerRow: 4 }).catch((e) => e)
+    expect(err).toBeInstanceOf(ApiError)
+    expect(err.message).toBe('Song not found')
   })
 })
 
-describe('exportUrl', () => {
-  it('encodes every export option', () => {
-    expect(exportUrl('s1', { fmt: 'chordpro', transpose: -2, capo: 3, simplify: true, barsPerRow: 8 }))
-      .toBe('/api/songs/s1/export?fmt=chordpro&transpose=-2&capo=3&simplify=1&bars_per_row=8')
+describe('slugTitle', () => {
+  it('replaces non-alphanumeric runs with a dash and trims the ends', () => {
+    expect(slugTitle("Autumn Leaves (Live) - Cover!")).toBe('Autumn-Leaves-Live-Cover')
+  })
+
+  it('falls back to a default for an empty or all-punctuation title', () => {
+    expect(slugTitle('')).toBe('chordarium')
+    expect(slugTitle('!!!')).toBe('chordarium')
   })
 })
