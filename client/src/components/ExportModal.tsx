@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { exportUrl } from '../api'
+import { exportSong, slugTitle } from '../api'
 import { useModalA11y } from '../hooks/useModalA11y'
 import type { ViewSettings } from '../hooks/useViewSettings'
-import type { ExportFormat } from '../types'
+import type { ExportFormat, Timeline } from '../types'
 
 const FORMATS: { fmt: ExportFormat; label: string; ext: string; hint: string }[] = [
   { fmt: 'pdf', label: 'PDF chord sheet', ext: '.pdf', hint: 'Printable bar grid with a chord legend' },
@@ -14,23 +14,46 @@ const FORMATS: { fmt: ExportFormat; label: string; ext: string; hint: string }[]
 
 interface Props {
   songId: string
+  title: string
+  timeline: Timeline
   settings: ViewSettings
   onClose(): void
 }
 
-export function ExportModal({ songId, settings, onClose }: Props) {
+export function ExportModal({ songId, title, timeline, settings, onClose }: Props) {
   const modalRef = useModalA11y<HTMLDivElement>(onClose)
   const [fmt, setFmt] = useState<ExportFormat>('pdf')
   const [includeView, setIncludeView] = useState(true)
   const [simplify, setSimplify] = useState(settings.simplify)
   const [barsPerRow, setBarsPerRow] = useState<4 | 8>(4)
-  const href = exportUrl(songId, {
-    fmt,
-    transpose: includeView ? settings.transpose : 0,
-    capo: includeView ? settings.capo : 0,
-    simplify,
-    barsPerRow,
-  })
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function download() {
+    setBusy(true)
+    setError(null)
+    try {
+      const ext = FORMATS.find((f) => f.fmt === fmt)!.ext
+      const blob = await exportSong(songId, timeline, {
+        fmt,
+        transpose: includeView ? settings.transpose : 0,
+        capo: includeView ? settings.capo : 0,
+        simplify,
+        barsPerRow,
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${slugTitle(title)}${ext}`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" ref={modalRef} role="dialog" aria-modal="true" aria-label="Export chord sheet" onClick={(e) => e.stopPropagation()}>
@@ -54,8 +77,9 @@ export function ExportModal({ songId, settings, onClose }: Props) {
             <option value={8}>8</option>
           </select>
         </label>
+        {error && <p role="alert" className="error">{error}</p>}
         <div className="control">
-          <a className="button primary" href={href} download>Download</a>
+          <button type="button" className="button primary" onClick={download} disabled={busy}>{busy ? 'Preparing…' : 'Download'}</button>
           <button type="button" className="button" onClick={onClose}>Close</button>
         </div>
       </div>
