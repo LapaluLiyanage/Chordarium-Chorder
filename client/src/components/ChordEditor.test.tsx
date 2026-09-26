@@ -59,4 +59,17 @@ describe('ChordEditor', () => {
     await user.click(screen.getByRole('button', { name: /no chord/i }))
     expect(onApply).toHaveBeenCalledWith('N', true)
   })
+
+  it('filters out an unparseable model suggestion instead of crashing', () => {
+    const bad: Segment = { ...seg, alt: 'H:maj' }
+    render(<ChordEditor segment={bad} shift={0} tonic="G" onApply={vi.fn()} onClose={vi.fn()} />)
+    const suggestions = within(screen.getByRole('group', { name: /suggestions/i }))
+    expect(suggestions.getAllByRole('button')).toHaveLength(1)
+    expect(suggestions.getByRole('button')).toHaveTextContent('D')
+  })
+
+  it('shows an error message when given one', () => {
+    render(<ChordEditor segment={seg} shift={0} tonic="G" error="Unknown chord root: H" onApply={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByRole('alert')).toHaveTextContent('Unknown chord root: H')
+  })
 })

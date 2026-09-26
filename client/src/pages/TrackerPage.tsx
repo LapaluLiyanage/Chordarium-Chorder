@@ -121,7 +121,7 @@ function Tracker({ song }: { song: Song }) {
           onReset={resetEdits} onExport={() => setExporting(true)} />
       </div>
       {editing !== null && (
-        <ChordEditor segment={segments[editing]} shift={shift} tonic={tonic} onApply={applyEdit} onClose={() => setEditing(null)} />
+        <ChordEditor segment={segments[editing]} shift={shift} tonic={tonic} error={actionError} onApply={applyEdit} onClose={() => setEditing(null)} />
       )}
       {exporting && (
         <ExportModal songId={song.id} title={t.title} timeline={{ ...t, segments }} settings={settings}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { exportSong, slugTitle } from '../api'
+import { api, slugTitle } from '../api'
 import { useModalA11y } from '../hooks/useModalA11y'
 import type { ViewSettings } from '../hooks/useViewSettings'
 import type { ExportFormat, Timeline } from '../types'
@@ -34,7 +34,7 @@ export function ExportModal({ songId, title, timeline, settings, onClose }: Prop
     setError(null)
     try {
       const ext = FORMATS.find((f) => f.fmt === fmt)!.ext
-      const blob = await exportSong(songId, timeline, {
+      const blob = await api.exportSong(songId, timeline, {
         fmt,
         transpose: includeView ? settings.transpose : 0,
         capo: includeView ? settings.capo : 0,

@@ -113,6 +113,39 @@ def test_export_requires_a_timeline_body(ctx, timeline):
     assert client.post(f"/api/songs/{song_id}/export?fmt=json").status_code == 400
 
 
+@pytest.mark.parametrize("bad_timeline", [
+    {"segments": []},
+    {"segments": "x"},
+    "not-a-dict",
+])
+def test_export_rejects_incomplete_timeline_with_400(ctx, timeline, bad_timeline):
+    client, store, _ = ctx
+    song_id = store.save_song(timeline)
+    assert client.post(f"/api/songs/{song_id}/export?fmt=pdf", json={"timeline": bad_timeline}).status_code == 400
+
+
+def test_export_rejects_a_bad_chord_label_with_400(ctx, timeline):
+    client, store, _ = ctx
+    song_id = store.save_song(timeline)
+    bad = copy.deepcopy(timeline)
+    bad["segments"][0]["label"] = "H:maj"
+    assert client.post(f"/api/songs/{song_id}/export?fmt=pdf", json={"timeline": bad}).status_code == 400
+
+
+def test_export_rejects_a_segment_missing_start_with_400(ctx, timeline):
+    client, store, _ = ctx
+    song_id = store.save_song(timeline)
+    bad = copy.deepcopy(timeline)
+    del bad["segments"][0]["start"]
+    assert client.post(f"/api/songs/{song_id}/export?fmt=pdf", json={"timeline": bad}).status_code == 400
+
+
+def test_export_rejects_a_non_object_body_with_400(ctx, timeline):
+    client, store, _ = ctx
+    song_id = store.save_song(timeline)
+    assert client.post(f"/api/songs/{song_id}/export?fmt=json", json=[1, 2]).status_code == 400
+
+
 @pytest.mark.parametrize("query", ["fmt=docx", "fmt=pdf&transpose=9", "fmt=pdf&capo=-1",
                                    "fmt=pdf&bars_per_row=5", "fmt=pdf&transpose=abc"])
 def test_export_rejects_bad_params(ctx, timeline, query):
