@@ -6,11 +6,11 @@ import { TIMELINE } from '../test/fixtures'
 import { ExportModal } from './ExportModal'
 
 vi.mock('../api', () => ({
-  exportSong: vi.fn(),
+  api: { exportSong: vi.fn() },
   slugTitle: (t: string) => t.replace(/[^A-Za-z0-9]+/g, '-'),
 }))
-import { exportSong } from '../api'
-const mockedExport = vi.mocked(exportSong)
+import { api } from '../api'
+const mockedExport = vi.mocked(api.exportSong)
 
 beforeEach(() => {
   vi.clearAllMocks()

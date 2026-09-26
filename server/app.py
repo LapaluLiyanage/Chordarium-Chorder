@@ -112,10 +112,11 @@ def create_app(config: dict | None = None, store: Store | None = None, runner=No
         song = store.get_song(song_id)
         if song is None:
             return error("Song not found", 404)
-        body = request.get_json(silent=True) or {}
+        body = request.get_json(silent=True)
+        body = body if isinstance(body, dict) else {}
         timeline = body.get("timeline")
-        if not isinstance(timeline, dict) or "segments" not in timeline:
-            raise BadRequest("Request body must include a 'timeline' object with segments.")
+        if not isinstance(timeline, dict) or not isinstance(timeline.get("segments"), list):
+            raise BadRequest("Request body must include a 'timeline' object with a segments list.")
         fmt = request.args.get("fmt", "pdf")
         if fmt not in EXPORTERS:
             raise BadRequest(f"fmt must be one of {', '.join(EXPORTERS)}")
@@ -126,7 +127,10 @@ def create_app(config: dict | None = None, store: Store | None = None, runner=No
             bars_per_row=_int_arg("bars_per_row", 4, 4, 8, allowed=(4, 8)),
         )
         render, mimetype, ext = EXPORTERS[fmt]
-        data = render(timeline, opts)
+        try:
+            data = render(timeline, opts)
+        except (KeyError, TypeError, ValueError, IndexError, AttributeError) as e:
+            raise BadRequest(f"Invalid timeline: {e}")
         if isinstance(data, str):
             data = data.encode("utf-8")
         filename = f"{_slug(song['title'])}.{ext}"

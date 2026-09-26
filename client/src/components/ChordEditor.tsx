@@ -10,11 +10,21 @@ interface Props {
   segment: Segment
   shift: number
   tonic: string
+  error?: string | null
   onApply(label: string, applyToAll: boolean): void
   onClose(): void
 }
 
-export function ChordEditor({ segment, shift, tonic, onApply, onClose }: Props) {
+function parsesCleanly(label: string): boolean {
+  try {
+    parse(label)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function ChordEditor({ segment, shift, tonic, error, onApply, onClose }: Props) {
   const modalRef = useModalA11y<HTMLDivElement>(onClose)
   const shown = transpose(parse(segment.label), shift)
   const [root, setRoot] = useState(shown?.root ?? 0)
@@ -25,7 +35,7 @@ export function ChordEditor({ segment, shift, tonic, onApply, onClose }: Props) 
   const display = (label: string) => formatSymbol(transpose(parse(label), shift), { tonic })
   const simpler = toHarte(simplify(parse(segment.label)))
   const suggestions = [segment.alt, simpler].filter(
-    (l, i, all): l is string => !!l && l !== 'N' && l !== segment.label && all.indexOf(l) === i,
+    (l, i, all): l is string => !!l && l !== 'N' && l !== segment.label && all.indexOf(l) === i && parsesCleanly(l),
   )
 
   function applyManual() {
@@ -37,6 +47,7 @@ export function ChordEditor({ segment, shift, tonic, onApply, onClose }: Props) 
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" ref={modalRef} role="dialog" aria-modal="true" aria-label="Edit chord" onClick={(e) => e.stopPropagation()}>
         <h2><ChordSymbol symbol={display(segment.label)} /></h2>
+        {error && <p role="alert" className="error">{error}</p>}
         {suggestions.length > 0 && (
           <div className="suggestions" role="group" aria-label="Suggestions">
             {suggestions.map((l) => (
