@@ -52,39 +52,8 @@ def test_save_is_upsert_by_video(store, timeline):
     assert "timeline" not in store.list_songs()[0]
 
 
-def test_edit_single_and_apply_to_all(store, timeline):
-    timeline["segments"][2]["label"] = "C:min7"
+def test_delete(store, timeline):
     song_id = store.save_song(timeline)
-    t = store.update_segment(song_id, 0, "A#:maj/3")
-    assert t["segments"][0]["label"] == "A#:maj/3" and t["segments"][0]["bass"] == "D"
-    assert t["segments"][0]["edited"] is True
-    assert t["segments"][2]["label"] == "C:min7"
-    t = store.update_segment(song_id, 2, "G:min", apply_to_all=True)
-    assert t["segments"][2]["label"] == "G:min"
-
-
-def test_edit_apply_to_all_changes_every_match(store, timeline):
-    timeline["segments"][3]["label"] = "C:min7"
-    song_id = store.save_song(timeline)
-    t = store.update_segment(song_id, 0, "N", apply_to_all=True)
-    assert [s["label"] for s in t["segments"]][:4] == ["N", "F:7", "A#:maj7", "N"]
-    assert t["segments"][0]["bass"] is None
-
-
-def test_edit_errors(store, timeline):
-    song_id = store.save_song(timeline)
-    with pytest.raises(KeyError):
-        store.update_segment("missing", 0, "C:maj")
-    with pytest.raises(IndexError):
-        store.update_segment(song_id, 99, "C:maj")
-    with pytest.raises(ValueError):
-        store.update_segment(song_id, 0, "H:maj")
-
-
-def test_reset_and_delete(store, timeline):
-    song_id = store.save_song(timeline)
-    store.update_segment(song_id, 0, "G:maj")
-    assert store.reset_song(song_id)["segments"][0]["label"] == "C:min7"
     assert store.delete_song(song_id) is True
     assert store.get_song(song_id) is None
     assert store.delete_song(song_id) is False

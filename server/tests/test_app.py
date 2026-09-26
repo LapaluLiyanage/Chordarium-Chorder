@@ -63,19 +63,21 @@ def test_analyze_returns_cached_song(ctx, timeline):
     assert runner.submitted == []
 
 
-def test_song_crud_and_edits(ctx, timeline):
+def test_song_crud(ctx, timeline):
     client, store, _ = ctx
     song_id = store.save_song(timeline)
     assert client.get("/api/songs").get_json()[0]["id"] == song_id
     assert client.get(f"/api/songs/{song_id}").get_json()["timeline"]["key"] == "G:min"
-    r = client.put(f"/api/songs/{song_id}/segments/0", json={"label": "C:min"})
-    assert r.status_code == 200 and r.get_json()["segments"][0]["label"] == "C:min"
-    assert client.put(f"/api/songs/{song_id}/segments/0", json={"label": "H:maj"}).status_code == 400
-    assert client.put(f"/api/songs/{song_id}/segments/99", json={"label": "C:maj"}).status_code == 404
-    assert client.put("/api/songs/nope/segments/0", json={"label": "C:maj"}).status_code == 404
-    assert client.post(f"/api/songs/{song_id}/reset").get_json()["segments"][0]["label"] == "C:min7"
     assert client.delete(f"/api/songs/{song_id}").status_code == 204
     assert client.get(f"/api/songs/{song_id}").status_code == 404
+
+
+def test_edit_and_reset_routes_are_gone(ctx, timeline):
+    client, store, _ = ctx
+    song_id = store.save_song(timeline)
+    assert client.put(f"/api/songs/{song_id}/segments/0", json={"label": "C:min"}).status_code == 404
+    assert client.post(f"/api/songs/{song_id}/reset").status_code == 404
+    assert client.get(f"/api/songs/{song_id}").get_json()["timeline"]["segments"][0]["label"] == "C:min7"
 
 
 @pytest.mark.parametrize("fmt,mimetype,ext", [
