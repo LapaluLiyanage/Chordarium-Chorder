@@ -8,10 +8,7 @@ import { TrackerPage } from './TrackerPage'
 
 const player = vi.hoisted(() => ({ ready: true, time: 1.0, playing: false, seek: vi.fn(), setRate: vi.fn() }))
 vi.mock('../hooks/useYouTubePlayer', () => ({ useYouTubePlayer: () => player }))
-vi.mock('../api', () => ({
-  api: { song: vi.fn(), editSegment: vi.fn(), reset: vi.fn() },
-  exportUrl: () => '/api/export',
-}))
+vi.mock('../api', () => ({ api: { song: vi.fn() } }))
 import { api } from '../api'
 const mocked = vi.mocked(api)
 
@@ -55,18 +52,26 @@ describe('TrackerPage', () => {
   })
 
   it('edits a chord through the editor', async () => {
-    const edited = makeSong()
-    edited.timeline.segments[1] = { ...edited.timeline.segments[1], label: 'F:maj', edited: true }
-    mocked.editSegment.mockResolvedValue(edited.timeline)
     const user = userEvent.setup()
     renderTracker()
     await screen.findByTestId('current-chord')
     await user.click(screen.getByRole('button', { name: /edit chords/i }))
     await user.click(screen.getByRole('button', { name: 'F7' }))
     await user.click(within(screen.getByRole('group', { name: /suggestions/i })).getByRole('button', { name: 'F' }))
-    expect(mocked.editSegment).toHaveBeenCalledWith('s1', 1, 'F:maj', false)
     await waitFor(() => expect(screen.queryByRole('dialog', { name: /edit chord/i })).not.toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'F' })).toHaveClass('edited')
+  })
+
+  it('keeps an edit after re-rendering and clears it on reset', async () => {
+    const user = userEvent.setup()
+    renderTracker()
+    await screen.findByTestId('current-chord')
+    await user.click(screen.getByRole('button', { name: /edit chords/i }))
+    await user.click(screen.getByRole('button', { name: 'F7' }))
+    await user.click(within(screen.getByRole('group', { name: /suggestions/i })).getByRole('button', { name: 'F' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'F' })).toHaveClass('edited'))
+    await user.click(screen.getByRole('button', { name: /reset edits/i }))
+    expect(screen.getByRole('button', { name: 'F7' })).not.toHaveClass('edited')
   })
 
   it('loops between A and B', async () => {
