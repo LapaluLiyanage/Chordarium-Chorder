@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 
 from server.app import create_app
@@ -87,10 +89,28 @@ def test_edit_and_reset_routes_are_gone(ctx, timeline):
 def test_exports(ctx, timeline, fmt, mimetype, ext):
     client, store, _ = ctx
     song_id = store.save_song(timeline)
-    r = client.get(f"/api/songs/{song_id}/export?fmt={fmt}&transpose=1&capo=2&simplify=1&bars_per_row=8")
+    r = client.post(f"/api/songs/{song_id}/export?fmt={fmt}&transpose=1&capo=2&simplify=1&bars_per_row=8",
+                    json={"timeline": timeline})
     assert r.status_code == 200
     assert r.mimetype == mimetype
     assert r.headers["Content-Disposition"] == f'attachment; filename="Test-Song.{ext}"'
+
+
+def test_export_uses_the_posted_timeline_not_the_stored_one(ctx, timeline):
+    client, store, _ = ctx
+    song_id = store.save_song(timeline)
+    edited = copy.deepcopy(timeline)
+    edited["segments"][0]["label"] = "G:maj"
+    r = client.post(f"/api/songs/{song_id}/export?fmt=json", json={"timeline": edited})
+    assert r.get_json()["segments"][0]["label"] == "G:maj"
+    assert store.get_song(song_id)["timeline"]["segments"][0]["label"] == "C:min7"
+
+
+def test_export_requires_a_timeline_body(ctx, timeline):
+    client, store, _ = ctx
+    song_id = store.save_song(timeline)
+    assert client.post(f"/api/songs/{song_id}/export?fmt=json", json={}).status_code == 400
+    assert client.post(f"/api/songs/{song_id}/export?fmt=json").status_code == 400
 
 
 @pytest.mark.parametrize("query", ["fmt=docx", "fmt=pdf&transpose=9", "fmt=pdf&capo=-1",
@@ -98,4 +118,4 @@ def test_exports(ctx, timeline, fmt, mimetype, ext):
 def test_export_rejects_bad_params(ctx, timeline, query):
     client, store, _ = ctx
     song_id = store.save_song(timeline)
-    assert client.get(f"/api/songs/{song_id}/export?{query}").status_code == 400
+    assert client.post(f"/api/songs/{song_id}/export?{query}", json={"timeline": timeline}).status_code == 400

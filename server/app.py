@@ -107,11 +107,15 @@ def create_app(config: dict | None = None, store: Store | None = None, runner=No
     def delete_song(song_id):
         return ("", 204) if store.delete_song(song_id) else error("Song not found", 404)
 
-    @app.get("/api/songs/<song_id>/export")
+    @app.post("/api/songs/<song_id>/export")
     def export_song(song_id):
         song = store.get_song(song_id)
         if song is None:
             return error("Song not found", 404)
+        body = request.get_json(silent=True) or {}
+        timeline = body.get("timeline")
+        if not isinstance(timeline, dict) or "segments" not in timeline:
+            raise BadRequest("Request body must include a 'timeline' object with segments.")
         fmt = request.args.get("fmt", "pdf")
         if fmt not in EXPORTERS:
             raise BadRequest(f"fmt must be one of {', '.join(EXPORTERS)}")
@@ -122,7 +126,7 @@ def create_app(config: dict | None = None, store: Store | None = None, runner=No
             bars_per_row=_int_arg("bars_per_row", 4, 4, 8, allowed=(4, 8)),
         )
         render, mimetype, ext = EXPORTERS[fmt]
-        data = render(song["timeline"], opts)
+        data = render(timeline, opts)
         if isinstance(data, str):
             data = data.encode("utf-8")
         filename = f"{_slug(song['title'])}.{ext}"
