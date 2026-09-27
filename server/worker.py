@@ -33,6 +33,8 @@ def run_once(store: Store, work_root: Path, analyze_fn=pipeline.analyze, keep_au
 
     try:
         timeline = analyze_fn(video_id, work_dir, pipeline.Options(mode=mode), progress)
+        if store.get_job(job_id)["cancel_requested"]:
+            raise pipeline.Cancelled()
         song_id = store.save_song(timeline)
         store.update_job(job_id, state="done", progress=100, message="Done", song_id=song_id)
     except pipeline.Cancelled:

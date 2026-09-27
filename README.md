@@ -31,14 +31,17 @@ pip install torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.
 pip install -r requirements.txt
 python scripts/setup_models.py      # BTC chord model (one time)
 docker compose up -d                # local Postgres on localhost:5433
-$env:DATABASE_URL = "postgresql://chordarium:chordarium@localhost:5433/chordarium"
 python -m pytest                    # fast tests; add -m "slow or not slow" for model tests
+$env:DATABASE_URL = "postgresql://chordarium:chordarium@localhost:5433/chordarium"
 python -m server.app                # API on http://127.0.0.1:5000
 ```
 
 Requires ffmpeg on PATH. Requires a local Postgres: `docker compose up -d`
-(or point `DATABASE_URL` at your own). Run the worker in a second terminal:
-`python -m server.worker`.
+(or point `DATABASE_URL` at your own for the app/worker). Run the worker in
+a second terminal: `python -m server.worker`. Tests use their own dedicated
+database (`chordarium_test` on the same server, auto-created on first run)
+and never touch `DATABASE_URL` — running the suite is always safe even if
+`DATABASE_URL` points at a real dev or production database elsewhere.
 
 ## Run the app (Phase 1)
 
