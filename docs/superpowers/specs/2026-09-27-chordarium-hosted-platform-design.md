@@ -1,6 +1,8 @@
 # Chordarium — Hosted Platform Design (Phase 1 + Phase 2 combined)
 
-Date: 2026-09-27 · Status: awaiting review
+Date: 2026-09-27 · Status: §4 and most of §6 implemented (see
+[2026-09-27-chordarium-client-side-edits.md](../plans/2026-09-27-chordarium-client-side-edits.md));
+§3, §5, §7's dedupe test, and §9 are not yet built — that's Plan 2.
 Supersedes the phasing in [`2026-09-26-chordarium-design.md`](2026-09-26-chordarium-design.md)
 §1 ("Out of scope: public hosting... Phase 2: separate spec later"). That
 spec's engine, theory, and export design (§3, §6) are unchanged and still
@@ -82,20 +84,49 @@ Changes:
   `store.py` (`update_segment`, `reset_song` and their backing columns
   `original_json` vs. `timeline_json`) goes away along with them, since
   there is only one canonical copy per song now.
-- The client's existing `useViewSettings` hook (which already persists
-  transpose/capo/simplify per song in `localStorage`) is extended to also
-  hold chord-label corrections, keyed by `song_id` and segment index. The
+- The client's existing `useViewSettings` hook already persists
+  transpose/capo/simplify per song in `localStorage`. Chord-label
+  corrections are held the same way, but in a separate hook
+  (`useChordOverrides`) rather than folded into `useViewSettings` — a
+  deviation from this section's original wording, made during Plan 1's
+  implementation for cleaner separation of concerns (edits vs. view
+  settings are different lifecycles: edits key off segment index and
+  need merge/apply logic; view settings are flat and never merge). The
   Tracker page, Chord Editor, and all exports read the *merged* view
   (canonical timeline + local overlay) exactly as they read the merged
-  view today for transpose/capo/simplify — only the source of the "edit"
-  half of that merge moves from server to `localStorage`.
-- "Reset" becomes purely client-side: clear that song's local overlay.
-  It never calls the server.
+  view today for transpose/capo/simplify.
+- "Reset" is purely client-side: clears that song's local overlay. It
+  never calls the server.
 
-## 5. Hosting architecture (Render)
+**Implemented** (Plan 1, merged): server-side mutation removed, exports
+switched to POST-with-timeline, `useChordOverrides` added.
 
-Two services sharing one database, replacing the single local Flask
-process + SQLite + in-process `ThreadPoolExecutor`:
+## 5. Hosting architecture (Render + Vercel)
+
+Backend on Render (two services sharing one database, replacing the
+single local Flask process + SQLite + in-process `ThreadPoolExecutor`);
+static frontend on Vercel.
+
+**Frontend (Vercel):** the Vite production build (`client/dist`) deployed
+as a static Vercel project. `client/vercel.json` adds a rewrite so the
+browser's existing relative `/api/*` calls (unchanged from local dev,
+`client/src/api.ts`) transparently proxy to the Render web service:
+
+```json
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://<render-web-service>.onrender.com/api/:path*" }
+  ]
+}
+```
+
+This is chosen over CORS + an absolute API base URL because it needs no
+client code change (still same-origin from the browser's perspective),
+doesn't expose the Render service's URL directly, and avoids CORS
+preflight overhead on every request. No `CHORDARIUM_API_URL`-style env
+var is needed in the client build.
+
+**Backend (Render):**
 
 - **Web service** (Flask API, existing `server/app.py` routes minus the
   edit/reset routes removed in §4): handles all HTTP routes, reads/writes
@@ -137,15 +168,19 @@ once the backend behaves per §3, with two small changes:
 
 - Add a client-side title filter (a text input filtering the
   already-fetched `songs` array in memory; library size doesn't
-  currently warrant a server-side search endpoint).
+  currently warrant a server-side search endpoint). **Implemented.**
 - Remove the "Public library · coming soon" badge in
   [`App.tsx`](../../../client/src/App.tsx) — it is no longer coming
-  soon.
-- Extend `useViewSettings` per §4 to own chord-label overlay edits, not
-  just transpose/capo/simplify.
+  soon. **Implemented.**
+- Add `useChordOverrides` (§4) to own chord-label overlay edits.
+  **Implemented** (as its own hook, not folded into `useViewSettings` —
+  see §4).
 - Remove any client code paths that call the now-deleted
   `PUT /api/songs/<id>/segments/<idx>` / `POST /api/songs/<id>/reset`
   endpoints, replacing them with the local-overlay equivalent.
+  **Implemented.**
+- Deploy the client to Vercel with the rewrite proxy in §5. **Not yet
+  built** — Plan 1 only changed app behavior, not where it's hosted.
 
 ## 7. Errors & edge cases
 
@@ -162,18 +197,24 @@ theory, and export layers unchanged by this document. New/changed
 coverage needed:
 
 - **pytest — API:** `edit_segment`/`reset_song` route tests removed
-  along with the routes; add a test that `GET /api/songs/<id>` returns
+  along with the routes; a test that `GET /api/songs/<id>` returns
   an identical payload before and after a client would have "edited" it
   (i.e. confirms no server-side mutation path remains reachable).
+  **Implemented.**
 - **pytest — API:** concurrent-duplicate-URL enqueue test (§7) confirms
-  a single job/download per `video_id`.
-- **Vitest — client:** `useViewSettings` overlay tests extended to cover
-  chord-label corrections merging with the canonical timeline, alongside
-  the existing transpose/capo/simplify cases.
+  a single job/download per `video_id`. **Already existed** before this
+  spec (`test_analyze_twice_reuses_running_job`) — not new work.
+- **Vitest — client:** `useChordOverrides` tests cover chord-label
+  corrections merging with the canonical timeline (single edit,
+  apply-to-all, reset, persistence per song, storage-throws,
+  invalid-label). **Implemented.**
 - **Manual:** verify the worker process can be started/stopped
   independently of the web service against a shared Postgres instance
   (local docker-compose or two local processes pointed at one DB, before
-  first Render deploy).
+  first Render deploy). **Not yet built.**
+- **Manual:** verify the Vercel rewrite actually proxies `/api/*` to the
+  Render service in a deployed preview, not just in local dev where
+  Vite's own dev-server proxy handles it. **Not yet built.**
 
 ## 9. Setup / deployment constraints
 
@@ -185,3 +226,5 @@ BTC weights):
   `store.py` is replaced with a Postgres-compatible data layer.
 - Worker's build step runs `scripts/setup_models.py`; Render build cache
   configured to persist the downloaded weights across deploys.
+- One Vercel project for `client/`, with `client/vercel.json`'s rewrite
+  (§5) pointing at the Render web service's URL. No new client env vars.
