@@ -1,11 +1,6 @@
+import threading
+
 import pytest
-
-from server.store import Store
-
-
-@pytest.fixture
-def store(tmp_path):
-    return Store(tmp_path / "test.db")
 
 
 def test_job_lifecycle(store):
@@ -57,3 +52,63 @@ def test_delete(store, timeline):
     assert store.delete_song(song_id) is True
     assert store.get_song(song_id) is None
     assert store.delete_song(song_id) is False
+
+
+def test_claim_next_job_picks_oldest_queued(store):
+    first = store.create_job("abcdefghijk", "fast")
+    store.create_job("abcdefghijk", "fast")
+    claimed = store.claim_next_job()
+    assert claimed["id"] == first
+    assert claimed["state"] == "downloading"
+    assert store.get_job(first)["state"] == "downloading"
+
+
+def test_claim_next_job_skips_non_queued(store):
+    job_id = store.create_job("abcdefghijk", "fast")
+    store.update_job(job_id, state="done")
+    assert store.claim_next_job() is None
+
+
+def test_claim_next_job_is_race_free_across_connections(store):
+    from server.tests.conftest import TEST_DSN
+    from server.store import Store
+
+    store.create_job("abcdefghijk", "fast")
+    other = Store(TEST_DSN)
+    results = []
+
+    def claim(s):
+        results.append(s.claim_next_job())
+
+    t1 = threading.Thread(target=claim, args=(store,))
+    t2 = threading.Thread(target=claim, args=(other,))
+    t1.start(); t2.start()
+    t1.join(); t2.join()
+
+    claimed = [r for r in results if r is not None]
+    assert len(claimed) == 1
+
+
+def test_request_cancel_on_queued_job_cancels_immediately(store):
+    job_id = store.create_job("abcdefghijk", "fast")
+    assert store.request_cancel(job_id) is True
+    assert store.get_job(job_id)["state"] == "cancelled"
+
+
+def test_request_cancel_on_running_job_sets_flag(store):
+    job_id = store.create_job("abcdefghijk", "fast")
+    store.claim_next_job()
+    assert store.request_cancel(job_id) is True
+    assert store.get_job(job_id)["cancel_requested"] is True
+    assert store.get_job(job_id)["state"] != "cancelled"
+
+
+def test_request_cancel_on_finished_job_is_a_noop(store):
+    job_id = store.create_job("abcdefghijk", "fast")
+    store.update_job(job_id, state="done")
+    assert store.request_cancel(job_id) is True
+    assert store.get_job(job_id)["state"] == "done"
+
+
+def test_request_cancel_on_missing_job(store):
+    assert store.request_cancel("nope") is False
