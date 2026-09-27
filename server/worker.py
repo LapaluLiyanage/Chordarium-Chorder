@@ -52,7 +52,7 @@ def run_once(store: Store, work_root: Path, analyze_fn=pipeline.analyze, keep_au
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
-    store = Store(os.environ["DATABASE_URL"])
+    store = Store.from_env()
     work_root = Path(os.environ.get("CHORDARIUM_DATA", Path(__file__).parent / "data")) / "audio"
     reset = store.fail_interrupted_jobs()
     if reset:
