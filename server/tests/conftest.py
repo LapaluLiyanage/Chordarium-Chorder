@@ -1,6 +1,20 @@
 import copy
+import os
 
+import psycopg
 import pytest
+
+from server.store import Store
+
+TEST_DSN = os.environ.get("DATABASE_URL", "postgresql://chordarium:chordarium@localhost:5433/chordarium")
+
+
+@pytest.fixture
+def store():
+    with psycopg.connect(TEST_DSN, autocommit=True) as conn:
+        conn.execute("DROP TABLE IF EXISTS songs, jobs")
+    return Store(TEST_DSN)
+
 
 TIMELINE = {
     "video_id": "abcdefghijk",

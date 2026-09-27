@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: chordarium
+      POSTGRES_PASSWORD: chordarium
+      POSTGRES_DB: chordarium
+    ports:
+      - "5433:5432"
+    volumes:
+      - chordarium-postgres:/var/lib/postgresql/data
+
+volumes:
+  chordarium-postgres:
