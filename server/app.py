@@ -1,6 +1,5 @@
 """Chordarium HTTP API."""
 import logging
-import os
 import re
 
 from flask import Flask, Response, jsonify, request
@@ -49,7 +48,7 @@ def create_app(config: dict | None = None, store: Store | None = None) -> Flask:
     app = Flask(__name__)
     if config:
         app.config.update(config)
-    store = store or Store(os.environ["DATABASE_URL"])
+    store = store or Store.from_env()
 
     def error(message: str, status: int):
         return jsonify({"error": message}), status
@@ -82,7 +81,8 @@ def create_app(config: dict | None = None, store: Store | None = None) -> Flask:
 
     @app.post("/api/jobs/<job_id>/cancel")
     def cancel_job(job_id):
-        return jsonify({"cancelled": store.request_cancel(job_id)}) if store.get_job(job_id) else error("Job not found", 404)
+        cancelled = store.request_cancel(job_id)
+        return jsonify({"cancelled": cancelled}) if cancelled else error("Job not found", 404)
 
     @app.get("/api/songs")
     def list_songs():

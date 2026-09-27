@@ -1,11 +1,12 @@
 """Postgres persistence for analysis jobs and song chord timelines."""
-import json
+import os
 import threading
 import uuid
 from datetime import datetime, timezone
 
 import psycopg
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 
 SCHEMA = (
     """
@@ -16,7 +17,7 @@ SCHEMA = (
         duration REAL NOT NULL,
         key TEXT NOT NULL,
         tempo REAL NOT NULL,
-        timeline_json TEXT NOT NULL,
+        timeline_json JSONB NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
     )
@@ -45,10 +46,23 @@ def _now() -> str:
 
 
 class Store:
+    @classmethod
+    def from_env(cls) -> "Store":
+        dsn = os.environ.get("DATABASE_URL")
+        if not dsn:
+            raise SystemExit(
+                "DATABASE_URL is not set. See README.md for local setup (docker compose up -d)."
+            )
+        return cls(dsn)
+
     def __init__(self, dsn: str):
         self._dsn = dsn
         self._conn = self._connect()
         self._lock = threading.Lock()
+
+    def close(self) -> None:
+        if not self._conn.closed:
+            self._conn.close()
 
     def _connect(self):
         conn = psycopg.connect(self._dsn, autocommit=True, row_factory=dict_row)
@@ -117,19 +131,19 @@ class Store:
 
     # ---- songs ----
     def save_song(self, timeline: dict) -> str:
-        blob = json.dumps(timeline)
         meta = (timeline["title"], timeline["duration"], timeline["key"], timeline["tempo"])
-        existing = self.get_song_by_video(timeline["video_id"])
-        if existing:
-            self._exec("UPDATE songs SET title=%s, duration=%s, key=%s, tempo=%s, timeline_json=%s, "
-                       "updated_at=%s WHERE id=%s", (*meta, blob, _now(), existing["id"]))
-            return existing["id"]
         song_id = uuid.uuid4().hex
         now = _now()
-        self._exec("INSERT INTO songs (id, video_id, title, duration, key, tempo, timeline_json, "
-                   "created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                   (song_id, timeline["video_id"], *meta, blob, now, now))
-        return song_id
+        row = self._exec(
+            "INSERT INTO songs (id, video_id, title, duration, key, tempo, timeline_json, created_at, updated_at) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) "
+            "ON CONFLICT (video_id) DO UPDATE SET title=EXCLUDED.title, duration=EXCLUDED.duration, "
+            "key=EXCLUDED.key, tempo=EXCLUDED.tempo, timeline_json=EXCLUDED.timeline_json, "
+            "updated_at=EXCLUDED.updated_at "
+            "RETURNING id",
+            (song_id, timeline["video_id"], *meta, Jsonb(timeline), now, now),
+        ).fetchone()
+        return row["id"]
 
     @staticmethod
     def _song(row: dict | None, with_timeline: bool = True) -> dict | None:
@@ -138,7 +152,7 @@ class Store:
         song = {k: row[k] for k in ("id", "video_id", "title", "duration", "key", "tempo",
                                     "created_at", "updated_at")}
         if with_timeline:
-            song["timeline"] = json.loads(row["timeline_json"])
+            song["timeline"] = row["timeline_json"]
         return song
 
     def get_song(self, song_id: str) -> dict | None:

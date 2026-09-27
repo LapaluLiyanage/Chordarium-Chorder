@@ -26,7 +26,9 @@ def _test_database():
 def store():
     with psycopg.connect(TEST_DSN, autocommit=True) as conn:
         conn.execute("DROP TABLE IF EXISTS songs, jobs")
-    return Store(TEST_DSN)
+    s = Store(TEST_DSN)
+    yield s
+    s.close()
 
 
 TIMELINE = {

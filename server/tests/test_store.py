@@ -84,6 +84,48 @@ def test_delete(store, timeline):
     assert store.delete_song(song_id) is False
 
 
+def test_save_song_concurrent_same_video_never_raises_a_unique_violation(store, timeline):
+    """Two workers analyzing the same not-yet-cached video at the same time
+    must never crash with a UNIQUE(video_id) violation - the second one to
+    finish should just update the row the first one created.
+    """
+    from server.tests.conftest import TEST_DSN
+    from server.store import Store
+
+    other = Store(TEST_DSN)
+    results = {}
+    errors = []
+
+    def save(s, key):
+        try:
+            results[key] = s.save_song(timeline)
+        except Exception as e:
+            errors.append(e)
+
+    t1 = threading.Thread(target=save, args=(store, "a"))
+    t2 = threading.Thread(target=save, args=(other, "b"))
+    t1.start(); t2.start()
+    t1.join(); t2.join()
+    other.close()
+
+    assert errors == []
+    assert results["a"] == results["b"]
+    assert len(store.list_songs()) == 1
+
+
+def test_store_from_env_without_database_url_gives_a_clear_error(monkeypatch):
+    from server.store import Store
+
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    with pytest.raises(SystemExit, match="DATABASE_URL"):
+        Store.from_env()
+
+
+def test_close_closes_the_connection(store):
+    store.close()
+    assert store._conn.closed
+
+
 def test_claim_next_job_picks_oldest_queued(store):
     first = store.create_job("abcdefghijk", "fast")
     store.create_job("abcdefghijk", "fast")
@@ -106,14 +148,17 @@ def test_claim_next_job_is_race_free_across_connections(store):
     store.create_job("abcdefghijk", "fast")
     other = Store(TEST_DSN)
     results = []
+    barrier = threading.Barrier(2)
 
     def claim(s):
+        barrier.wait()
         results.append(s.claim_next_job())
 
     t1 = threading.Thread(target=claim, args=(store,))
     t2 = threading.Thread(target=claim, args=(other,))
     t1.start(); t2.start()
     t1.join(); t2.join()
+    other.close()
 
     claimed = [r for r in results if r is not None]
     assert len(claimed) == 1
@@ -157,17 +202,21 @@ def test_request_cancel_concurrent_with_claim_leaves_a_consistent_state(store):
     job_id = store.create_job("abcdefghijk", "fast")
     canceller = Store(TEST_DSN)
     results = {}
+    barrier = threading.Barrier(2)
 
     def do_claim():
+        barrier.wait()
         results["claimed"] = store.claim_next_job()
 
     def do_cancel():
+        barrier.wait()
         results["cancelled"] = canceller.request_cancel(job_id)
 
     t1 = threading.Thread(target=do_claim)
     t2 = threading.Thread(target=do_cancel)
     t1.start(); t2.start()
     t1.join(); t2.join()
+    canceller.close()
 
     job = store.get_job(job_id)
     assert results["cancelled"] is True
