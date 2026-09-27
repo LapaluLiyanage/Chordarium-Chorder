@@ -2,7 +2,6 @@
 import logging
 import os
 import re
-from pathlib import Path
 
 from flask import Flask, Response, jsonify, request
 
@@ -13,7 +12,6 @@ from server.export.json_export import to_json
 from server.export.midi import to_midi
 from server.export.pdf import to_pdf
 from server.export.txt import to_txt
-from server.jobs import JobRunner
 from server.store import Store
 
 EXPORTERS = {
@@ -47,17 +45,11 @@ def _slug(title: str) -> str:
     return re.sub(r"[^A-Za-z0-9]+", "-", title).strip("-") or "chordarium"
 
 
-def create_app(config: dict | None = None, store: Store | None = None, runner=None) -> Flask:
+def create_app(config: dict | None = None, store: Store | None = None) -> Flask:
     app = Flask(__name__)
-    app.config.update(DATA_DIR=Path(os.environ.get("CHORDARIUM_DATA", Path(__file__).parent / "data")),
-                      KEEP_AUDIO=False)
     if config:
         app.config.update(config)
-    data_dir = Path(app.config["DATA_DIR"])
-    data_dir.mkdir(parents=True, exist_ok=True)
-    store = store or Store(data_dir / "chordarium.db")
-    store.fail_interrupted_jobs()
-    runner = runner or JobRunner(store, data_dir / "audio", keep_audio=app.config["KEEP_AUDIO"])
+    store = store or Store(os.environ["DATABASE_URL"])
 
     def error(message: str, status: int):
         return jsonify({"error": message}), status
@@ -81,7 +73,7 @@ def create_app(config: dict | None = None, store: Store | None = None, runner=No
         active = store.get_active_job(video_id)
         if active:
             return jsonify({"job_id": active["id"]}), 202
-        return jsonify({"job_id": runner.submit(video_id, mode)}), 202
+        return jsonify({"job_id": store.create_job(video_id, mode)}), 202
 
     @app.get("/api/jobs/<job_id>")
     def get_job(job_id):
@@ -90,9 +82,7 @@ def create_app(config: dict | None = None, store: Store | None = None, runner=No
 
     @app.post("/api/jobs/<job_id>/cancel")
     def cancel_job(job_id):
-        if store.get_job(job_id) is None:
-            return error("Job not found", 404)
-        return jsonify({"cancelled": runner.cancel(job_id)})
+        return jsonify({"cancelled": store.request_cancel(job_id)}) if store.get_job(job_id) else error("Job not found", 404)
 
     @app.get("/api/songs")
     def list_songs():
