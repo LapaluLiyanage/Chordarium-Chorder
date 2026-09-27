@@ -2,6 +2,15 @@ import threading
 
 import pytest
 
+from server.tests.conftest import TEST_DSN
+
+
+def test_test_dsn_uses_a_dedicated_database_not_the_dev_one():
+    """Tests must never share a database with DATABASE_URL - running the
+    suite against a real dev/prod connection string would DROP its tables.
+    """
+    assert TEST_DSN.rsplit("/", 1)[1] != "chordarium"
+
 
 def test_job_lifecycle(store):
     job_id = store.create_job("abcdefghijk", "fast")
@@ -23,9 +32,11 @@ def test_fail_interrupted_jobs(store):
     store.update_job(running, state="beats")
     done = store.create_job("abcdefghijk", "fast")
     store.update_job(done, state="done")
+    queued = store.create_job("abcdefghijk", "fast")
     assert store.fail_interrupted_jobs() == 1
     assert store.get_job(running)["state"] == "failed"
     assert store.get_job(done)["state"] == "done"
+    assert store.get_job(queued)["state"] == "queued"
 
 
 def test_get_active_job(store):
@@ -45,6 +56,25 @@ def test_save_is_upsert_by_video(store, timeline):
     assert store.get_song_by_video("abcdefghijk")["id"] == first
     assert [s["id"] for s in store.list_songs()] == [first]
     assert "timeline" not in store.list_songs()[0]
+
+
+def test_store_reconnects_after_the_connection_drops(store):
+    """A Postgres restart, maintenance blip, or network hiccup must not
+    permanently break every future call on this Store instance - the web
+    service and worker are both long-running processes that hold one Store
+    for their whole lifetime.
+    """
+    import psycopg
+
+    store.create_job("abcdefghijk", "fast")
+    with psycopg.connect(TEST_DSN, autocommit=True) as admin:
+        admin.execute(
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+            "WHERE datname = current_database() AND pid <> pg_backend_pid()"
+        )
+    assert len(store.list_songs()) == 0
+    job_id = store.create_job("abcdefghijk", "fast")
+    assert store.get_job(job_id)["state"] == "queued"
 
 
 def test_delete(store, timeline):
@@ -112,3 +142,37 @@ def test_request_cancel_on_finished_job_is_a_noop(store):
 
 def test_request_cancel_on_missing_job(store):
     assert store.request_cancel("nope") is False
+
+
+def test_request_cancel_concurrent_with_claim_leaves_a_consistent_state(store):
+    """A cancel racing a worker's claim must never lose the request: either
+    the cancel wins and the job never gets claimed, or the claim wins and
+    the cancel still lands as a flag the worker will see. A read-then-write
+    implementation can lose the flag entirely if the claim lands between
+    the read and the write.
+    """
+    from server.tests.conftest import TEST_DSN
+    from server.store import Store
+
+    job_id = store.create_job("abcdefghijk", "fast")
+    canceller = Store(TEST_DSN)
+    results = {}
+
+    def do_claim():
+        results["claimed"] = store.claim_next_job()
+
+    def do_cancel():
+        results["cancelled"] = canceller.request_cancel(job_id)
+
+    t1 = threading.Thread(target=do_claim)
+    t2 = threading.Thread(target=do_cancel)
+    t1.start(); t2.start()
+    t1.join(); t2.join()
+
+    job = store.get_job(job_id)
+    assert results["cancelled"] is True
+    if job["state"] == "cancelled":
+        assert results["claimed"] is None
+    else:
+        assert job["state"] == "downloading"
+        assert job["cancel_requested"] is True

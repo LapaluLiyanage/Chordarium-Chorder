@@ -46,14 +46,23 @@ def _now() -> str:
 
 class Store:
     def __init__(self, dsn: str):
-        self._conn = psycopg.connect(dsn, autocommit=True, row_factory=dict_row)
-        for stmt in SCHEMA:
-            self._conn.execute(stmt)
+        self._dsn = dsn
+        self._conn = self._connect()
         self._lock = threading.Lock()
+
+    def _connect(self):
+        conn = psycopg.connect(self._dsn, autocommit=True, row_factory=dict_row)
+        for stmt in SCHEMA:
+            conn.execute(stmt)
+        return conn
 
     def _exec(self, sql: str, params: tuple = ()):
         with self._lock:
-            return self._conn.execute(sql, params)
+            try:
+                return self._conn.execute(sql, params)
+            except psycopg.OperationalError:
+                self._conn = self._connect()
+                return self._conn.execute(sql, params)
 
     # ---- jobs ----
     def create_job(self, video_id: str, mode: str) -> str:
@@ -80,7 +89,7 @@ class Store:
 
     def fail_interrupted_jobs(self) -> int:
         cur = self._exec("UPDATE jobs SET state = 'failed', error = 'The server restarted during analysis.' "
-                         f"WHERE state NOT IN {FINAL_STATES}")
+                         f"WHERE state NOT IN {FINAL_STATES + ('queued',)}")
         return cur.rowcount
 
     def claim_next_job(self) -> dict | None:
@@ -92,14 +101,19 @@ class Store:
         ).fetchone()
 
     def request_cancel(self, job_id: str) -> bool:
-        job = self.get_job(job_id)
-        if job is None:
-            return False
-        if job["state"] == "queued":
-            self.update_job(job_id, state="cancelled", message="Cancelled")
-        elif job["state"] not in FINAL_STATES:
-            self._exec("UPDATE jobs SET cancel_requested = TRUE WHERE id = %s", (job_id,))
-        return True
+        cancelled = self._exec(
+            "UPDATE jobs SET state = 'cancelled', message = 'Cancelled' "
+            "WHERE id = %s AND state = 'queued' RETURNING id", (job_id,)
+        ).fetchone()
+        if cancelled:
+            return True
+        flagged = self._exec(
+            f"UPDATE jobs SET cancel_requested = TRUE WHERE id = %s AND state NOT IN {FINAL_STATES} "
+            "RETURNING id", (job_id,)
+        ).fetchone()
+        if flagged:
+            return True
+        return self.get_job(job_id) is not None
 
     # ---- songs ----
     def save_song(self, timeline: dict) -> str:

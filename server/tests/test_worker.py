@@ -54,6 +54,23 @@ def test_cancel_requested_mid_job_stops_it_as_cancelled(store, tmp_path, timelin
     assert store.list_songs() == []
 
 
+def test_cancel_requested_after_analyze_returns_still_cancels_before_saving(store, tmp_path, timeline):
+    """A cancel that arrives after the last progress() call (so analyze_fn
+    already returned a result) must still be honored - the job must not be
+    silently saved as done just because no further progress() call was left
+    to notice the flag.
+    """
+    def analyze(video_id, work_dir, options, progress):
+        progress("key", 92, "Estimating key")
+        store.request_cancel(job_id)
+        return timeline
+
+    job_id = store.create_job("abcdefghijk", "fast")
+    run_once(store, tmp_path, analyze_fn=analyze)
+    assert store.get_job(job_id)["state"] == "cancelled"
+    assert store.list_songs() == []
+
+
 def test_keep_audio_leaves_the_work_dir(store, tmp_path, timeline):
     def analyze(video_id, work_dir, options, progress):
         work_dir.mkdir(parents=True, exist_ok=True)
