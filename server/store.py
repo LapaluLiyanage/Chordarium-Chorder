@@ -151,6 +151,7 @@ class Store:
             return None
         song = {k: row[k] for k in ("id", "video_id", "title", "duration", "key", "tempo",
                                     "created_at", "updated_at")}
+        song["accurate"] = bool(((row["timeline_json"] or {}).get("engine") or {}).get("separated"))
         if with_timeline:
             song["timeline"] = row["timeline_json"]
         return song

@@ -4,6 +4,8 @@ interface YTPlayer {
   getCurrentTime?: () => number
   seekTo(seconds: number, allowSeekAhead: boolean): void
   setPlaybackRate(rate: number): void
+  playVideo(): void
+  pauseVideo(): void
   destroy(): void
 }
 
@@ -44,6 +46,8 @@ export interface PlayerControls {
   playing: boolean
   seek(t: number): void
   setRate(r: number): void
+  play(): void
+  pause(): void
 }
 
 export function useYouTubePlayer(elementId: string, videoId: string): PlayerControls {
@@ -91,5 +95,8 @@ export function useYouTubePlayer(elementId: string, videoId: string): PlayerCont
   }, [])
   const setRate = useCallback((r: number) => playerRef.current?.setPlaybackRate(r), [])
 
-  return { ready, time, playing, seek, setRate }
+  const play = useCallback(() => playerRef.current?.playVideo(), [])
+  const pause = useCallback(() => playerRef.current?.pauseVideo(), [])
+
+  return { ready, time, playing, seek, setRate, play, pause }
 }

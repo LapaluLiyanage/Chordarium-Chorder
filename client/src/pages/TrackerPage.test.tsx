@@ -6,7 +6,7 @@ import { SECTIONS, makeSong } from '../test/fixtures'
 import { renderAt } from '../test/router'
 import { TrackerPage } from './TrackerPage'
 
-const player = vi.hoisted(() => ({ ready: true, time: 1.0, playing: false, seek: vi.fn(), setRate: vi.fn() }))
+const player = vi.hoisted(() => ({ ready: true, time: 1.0, playing: false, seek: vi.fn(), setRate: vi.fn(), play: vi.fn(), pause: vi.fn() }))
 vi.mock('../hooks/useYouTubePlayer', () => ({ useYouTubePlayer: () => player }))
 vi.mock('../api', () => ({ api: { song: vi.fn(), analyze: vi.fn() } }))
 import { api } from '../api'
@@ -26,7 +26,7 @@ beforeEach(() => {
 describe('TrackerPage', () => {
   it('shows the song header and the chord at the playhead', async () => {
     renderTracker()
-    expect(await screen.findByRole('heading', { name: 'Test Song' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Test Song' })).toBeInTheDocument()
     expect(screen.getByText('G minor')).toBeInTheDocument()
     expect(screen.getByTestId('current-chord')).toHaveTextContent('Cm7')
     expect(screen.getByTestId('next-chord')).toHaveTextContent('F7')

@@ -41,6 +41,8 @@ export interface SongSummary {
   tempo: number
   created_at: string
   updated_at: string
+  /** analyzed with stem separation (Accurate mode) */
+  accurate?: boolean
 }
 
 export interface Song extends SongSummary {

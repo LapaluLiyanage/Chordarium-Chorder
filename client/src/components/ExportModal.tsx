@@ -17,12 +17,13 @@ interface Props {
   title: string
   timeline: Timeline
   settings: ViewSettings
+  initialFormat?: ExportFormat
   onClose(): void
 }
 
-export function ExportModal({ songId, title, timeline, settings, onClose }: Props) {
+export function ExportModal({ songId, title, timeline, settings, initialFormat = 'pdf', onClose }: Props) {
   const modalRef = useModalA11y<HTMLDivElement>(onClose)
-  const [fmt, setFmt] = useState<ExportFormat>('pdf')
+  const [fmt, setFmt] = useState<ExportFormat>(initialFormat)
   const [includeView, setIncludeView] = useState(true)
   const [simplify, setSimplify] = useState(settings.simplify)
   const [barsPerRow, setBarsPerRow] = useState<4 | 8>(4)

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, ApiError } from '../api'
+import { SiteNav } from '../components/SiteNav'
 import type { Job, JobState } from '../types'
 
 const STEPS: [JobState, string][] = [
@@ -59,6 +60,8 @@ export function AnalyzingPage({ pollMs = 1000 }: { pollMs?: number }) {
   const finished = job !== null && FINAL.includes(job.state)
 
   return (
+    <>
+    <SiteNav />
     <main className="page">
       <p className="eyebrow">Analyzing</p>
       <h1>Listening to your song…</h1>
@@ -83,5 +86,6 @@ export function AnalyzingPage({ pollMs = 1000 }: { pollMs?: number }) {
       {error && <p role="alert" className="error">{error}</p>}
       {(finished || error) && job?.state !== 'done' && <p><Link to="/" className="button">Try another link</Link></p>}
     </main>
+    </>
   )
 }

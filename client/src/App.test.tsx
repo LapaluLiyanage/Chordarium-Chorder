@@ -5,8 +5,10 @@ import { AppRoutes } from './App'
 
 vi.mock('./api', () => ({ api: { analyze: vi.fn(), songs: vi.fn().mockResolvedValue([]) } }))
 
-it('renders the brand and the home page at /', async () => {
+it('renders the wordmark and the paste field at /', async () => {
   render(<MemoryRouter initialEntries={['/']}><AppRoutes /></MemoryRouter>)
-  expect(screen.getByRole('link', { name: 'Chordarium' })).toHaveAttribute('href', '/')
-  expect(await screen.findByRole('heading', { name: /paste a song/i })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { level: 1, name: 'Chordarium' })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: /home/i })).toHaveAttribute('href', '#top')
+  expect(screen.getByLabelText(/paste a youtube link/i)).toBeInTheDocument()
+  expect(await screen.findByText(/no songs yet/i)).toBeInTheDocument()
 })

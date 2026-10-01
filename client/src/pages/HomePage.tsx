@@ -1,103 +1,85 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api'
-import { formatKey } from '../theory/chord'
+import { Hero } from '../components/Hero'
+import { IntroSection } from '../components/IntroSection'
+import { LibrarySection } from '../components/LibrarySection'
+import { SheetSection } from '../components/SheetSection'
+import { SiteFooter } from '../components/SiteNav'
+import { ToolSection } from '../components/ToolSection'
+import { DEMO_TIMELINE } from '../demo'
+import { useDemoClock } from '../hooks/useDemoClock'
+import { useFavourites } from '../hooks/useLibraryStore'
+import { barAt, buildSheet } from '../sheet'
+import { formatKey, keySpelling } from '../theory/chord'
 import type { SongSummary } from '../types'
 
-function formatDuration(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = Math.round(seconds % 60)
-  return `${m}:${String(s).padStart(2, '0')}`
-}
+const SAMPLE_FOOTER = <span className="sheet-hint">Analyze a song to download its own sheet as PDF, ChordPro or TXT.</span>
 
 export function HomePage() {
   const navigate = useNavigate()
-  const [url, setUrl] = useState('')
-  const [mode, setMode] = useState<'fast' | 'accurate'>('fast')
+  const { hash } = useLocation()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [songs, setSongs] = useState<SongSummary[] | null>(null)
-  const [query, setQuery] = useState('')
+  const [favourites, toggleFavourite] = useFavourites()
+
+  // the sample sheet's own controls
+  const [loop, setLoop] = useState<{ start: number; end: number } | null>(null)
+  const [shift, setShift] = useState(0)
+  const [perRow, setPerRow] = useState(4)
+  const [simplify, setSimplify] = useState(false)
+  const clock = useDemoClock(DEMO_TIMELINE.duration, loop)
 
   useEffect(() => {
     api.songs().then(setSongs).catch(() => setSongs([]))
   }, [])
 
-  async function submit(e: FormEvent) {
-    e.preventDefault()
+  useEffect(() => {
+    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView?.()
+  }, [hash, songs])
+
+  const analyze = useCallback(async (url: string, mode: 'fast' | 'accurate') => {
     setBusy(true)
     setError(null)
     try {
-      const r = await api.analyze(url.trim(), mode)
+      const r = await api.analyze(url, mode)
       navigate(r.song_id ? `/songs/${r.song_id}` : `/jobs/${r.job_id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setBusy(false)
     }
-  }
+  }, [navigate])
+
+  const sheet = useMemo(
+    () => buildSheet(DEMO_TIMELINE, DEMO_TIMELINE.segments, DEMO_TIMELINE.sections ?? [],
+      { transpose: shift, simplify, tonic: keySpelling(DEMO_TIMELINE.key, shift) }),
+    [shift, simplify],
+  )
+  const transposeBy = useCallback((d: number) => setShift((s) => Math.max(-6, Math.min(6, s + d))), [])
+  const toggleSimplify = useCallback(() => setSimplify((v) => !v), [])
+  const seekDemo = clock.seek
+  const seekBar = useCallback((b: { start: number }) => seekDemo(b.start), [seekDemo])
+  const toggleLoop = useCallback((s: { start: number; end: number }) => setLoop((l) => (l && l.start === s.start && l.end === s.end ? null : { start: s.start, end: s.end })), [])
+  const sampleId = songs && songs.length > 0 ? songs[0].id : null
+  const openSample = useCallback(() => { if (sampleId) navigate(`/songs/${sampleId}`) }, [sampleId, navigate])
 
   return (
-    <main className="page">
-      <p className="eyebrow">Chord recognition studio</p>
-      <h1>Paste a song. Play along with its chords.</h1>
-      <form className="analyze-form" onSubmit={submit}>
-        <label htmlFor="url" className="muted">YouTube link</label>
-        <div className="url-field">
-          <span className="badge">YT</span>
-          <input id="url" type="text" inputMode="url" required placeholder="https://www.youtube.com/watch?v=…"
-            value={url} onChange={(e) => setUrl(e.target.value)} />
-        </div>
-        <fieldset className="mode">
-          <legend className="muted" style={{ gridColumn: '1 / -1' }}>Mode</legend>
-          <label className="mode-option">
-            <span className="mode-title">
-              <input type="radio" name="mode" checked={mode === 'fast'} onChange={() => setMode('fast')} />
-              Quick <span className="mode-time">~30 s</span>
-            </span>
-            <p>A fast first look at the chords and beats. Section labels (Verse, Chorus…) are less certain. Best to start here.</p>
-          </label>
-          <label className="mode-option">
-            <span className="mode-title">
-              <input type="radio" name="mode" checked={mode === 'accurate'} onChange={() => setMode('accurate')} />
-              Accurate <span className="mode-time">~3 min</span>
-            </span>
-            <p>Takes longer, but finds bass notes and song sections more reliably. Best for jazz, live takes and extended chords.</p>
-          </label>
-        </fieldset>
-        <div><button className="button primary" type="submit" disabled={busy}>{busy ? 'Starting…' : 'Analyze'}</button></div>
-        {error && <p role="alert" className="error">{error}</p>}
-      </form>
-
-      <h2>Recent songs</h2>
-      {songs !== null && songs.length > 0 && (
-        <input type="search" aria-label="Search songs by title" placeholder="Search by title…"
-          value={query} onChange={(e) => setQuery(e.target.value)} />
-      )}
-      {songs === null ? <p className="muted">Loading…</p> : songs.length === 0 ? (
-        <p className="muted">No songs yet — analyze your first link above.</p>
-      ) : (() => {
-        const filtered = songs.filter((s) => s.title.toLowerCase().includes(query.trim().toLowerCase()))
-        return filtered.length === 0 ? (
-          <p className="muted">No songs match “{query}”.</p>
-        ) : (
-          <div className="library">
-            {filtered.map((s) => (
-              <Link key={s.id} to={`/songs/${s.id}`} className="song-card" aria-label={s.title}>
-                <div className="song-thumb">
-                  <img src={`https://i.ytimg.com/vi/${s.video_id}/mqdefault.jpg`} alt="" loading="lazy" />
-                  <span className="song-duration">{formatDuration(s.duration)}</span>
-                </div>
-                <div>
-                  <strong>{s.title}</strong>
-                  <div className="muted">
-                    <span className="pill">{formatKey(s.key)}</span> · {Math.round(s.tempo)} BPM
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )
-      })()}
+    <main className="home">
+      <Hero busy={busy} error={error} onAnalyze={analyze} onSample={sampleId ? openSample : undefined} />
+      <IntroSection timeline={DEMO_TIMELINE} clock={clock} />
+      <div className="rule-line" />
+      <div className="steps-bar"><span>① PASTE A LINK</span><span>② WE FIND THE CHORDS</span><span>③ YOU PLAY ALONG</span></div>
+      <ToolSection timeline={DEMO_TIMELINE} clock={clock} />
+      <LibrarySection songs={songs} favourites={favourites} onFavourite={toggleFavourite} />
+      <SheetSection id="sheet" title="AUTUMN LEAVES" label="SAMPLE · SYNCED"
+        meta={`KEY ${formatKey(DEMO_TIMELINE.key, shift).toUpperCase()} · 120 BPM · 4/4 · SAMPLE SONG`}
+        sections={sheet} perRow={perRow} onPerRow={setPerRow} transpose={shift} onTranspose={transposeBy}
+        simplify={simplify} onSimplify={toggleSimplify} playing={clock.playing} onTogglePlay={clock.toggle}
+        currentBar={barAt(DEMO_TIMELINE.downbeats, clock.time)} onSeekBar={seekBar}
+        loop={loop} onLoop={toggleLoop}
+        footer={SAMPLE_FOOTER} />
+      <SiteFooter />
     </main>
   )
 }

@@ -14,6 +14,20 @@ export function sectionKind(label: string): SectionKind {
   return 'other'
 }
 
+const KIND_COLORS: Record<SectionKind, string> = {
+  intro: '#f2c14e',
+  verse: '#6aa8e0',
+  chorus: '#f2913d',
+  bridge: '#b48be0',
+  interlude: '#ee8577',
+  outro: '#6fbf8b',
+  other: '#b9ad9c',
+}
+
+export function sectionColor(label: string): string {
+  return KIND_COLORS[sectionKind(label)]
+}
+
 export function sectionAt(sections: Section[], time: number): Section | null {
   return sections.find((s) => s.start <= time && time < s.end) ?? null
 }

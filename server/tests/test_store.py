@@ -56,6 +56,7 @@ def test_save_is_upsert_by_video(store, timeline):
     assert store.get_song_by_video("abcdefghijk")["id"] == first
     assert [s["id"] for s in store.list_songs()] == [first]
     assert "timeline" not in store.list_songs()[0]
+    assert store.list_songs()[0]["accurate"] is True  # the fixture timeline was analyzed with stems
 
 
 def test_store_reconnects_after_the_connection_drops(store):
