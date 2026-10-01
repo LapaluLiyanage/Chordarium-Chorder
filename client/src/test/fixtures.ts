@@ -30,3 +30,8 @@ export function makeSong(patch: Partial<Timeline> = {}): Song {
 }
 
 export const SONG: Song = makeSong()
+
+export const SECTIONS = [
+  { start: 0, end: 4, label: 'Intro', uncertain: false },
+  { start: 4, end: 8, label: 'Chorus', uncertain: true },
+]

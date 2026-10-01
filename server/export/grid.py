@@ -31,7 +31,10 @@ def _label_at(segments: list[dict], starts: list[float], t: float) -> str:
     return "N"
 
 
-def build_bars(timeline: dict, opts: ExportOptions) -> list[list[str]]:
+DISCLAIMER = "Chords and sections were detected automatically and may contain errors."
+
+
+def _timed_bars(timeline: dict, opts: ExportOptions) -> list[tuple[float, list[str]]]:
     beats = timeline["beats"]
     downbeats = timeline["downbeats"] or beats[::timeline.get("time_signature", 4)]
     if not beats or not downbeats:
@@ -50,16 +53,38 @@ def build_bars(timeline: dict, opts: ExportOptions) -> list[list[str]]:
                                capo=opts.capo, simplify_chord=opts.simplify, tonic=tonic)
             slots.append(symbol if j == 0 or symbol != prev else HOLD)
             prev = symbol
-        bars.append(slots)
+        bars.append((start, slots))
 
-    def empty(bar: list[str]) -> bool:
-        return all(s in (NO_CHORD, HOLD) for s in bar)
+    def empty(bar: tuple[float, list[str]]) -> bool:
+        return all(s in (NO_CHORD, HOLD) for s in bar[1])
 
     while bars and empty(bars[0]):
         bars.pop(0)
     while bars and empty(bars[-1]):
         bars.pop()
     return bars
+
+
+def build_bars(timeline: dict, opts: ExportOptions) -> list[list[str]]:
+    return [slots for _, slots in _timed_bars(timeline, opts)]
+
+
+def section_blocks(timeline: dict, opts: ExportOptions) -> list[tuple[str | None, list[list[str]]]]:
+    """Bars grouped under their section label; one unlabelled block when the song has no sections."""
+    bars = _timed_bars(timeline, opts)
+    sections = sorted(timeline.get("sections") or [], key=lambda s: s["start"])
+    if not sections:
+        return [(None, [slots for _, slots in bars])] if bars else []
+    blocks: list[tuple[str | None, list[list[str]]]] = []
+    for start, slots in bars:
+        owner = None
+        for sec in sections:
+            if sec["start"] - 1e-6 <= start < sec["end"] - 1e-6:
+                owner = sec["label"]
+        if not blocks or blocks[-1][0] != owner:
+            blocks.append((owner, []))
+        blocks[-1][1].append(slots)
+    return blocks
 
 
 def grid_lines(bars: list[list[str]], per_row: int) -> list[str]:

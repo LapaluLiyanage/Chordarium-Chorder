@@ -8,6 +8,14 @@ export interface Segment {
   edited: boolean
 }
 
+export interface Section {
+  start: number
+  end: number
+  label: string
+  /** true when the label is a weaker guess (no vocal stem was available) */
+  uncertain: boolean
+}
+
 export interface Timeline {
   video_id: string
   title: string
@@ -18,6 +26,8 @@ export interface Timeline {
   beats: number[]
   downbeats: number[]
   segments: Segment[]
+  /** absent on songs analysed before section detection existed */
+  sections?: Section[]
   engine: { chords: string; separated: boolean; version: string }
   warnings: string[]
 }

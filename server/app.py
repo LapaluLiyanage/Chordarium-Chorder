@@ -66,7 +66,7 @@ def create_app(config: dict | None = None, store: Store | None = None) -> Flask:
         video_id = parse_video_id(str(body.get("url", "")))
         if not video_id:
             raise BadRequest("That doesn't look like a YouTube video link.")
-        cached = store.get_song_by_video(video_id)
+        cached = None if body.get("refresh") is True else store.get_song_by_video(video_id)
         if cached:
             return jsonify({"song_id": cached["id"], "cached": True})
         active = store.get_active_job(video_id)

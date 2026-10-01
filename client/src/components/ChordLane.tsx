@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { PX_PER_SECOND, isLowConfidence, laneOffset } from '../sync'
-import type { Segment } from '../types'
+import { sectionKind } from '../sections'
+import type { Section, Segment } from '../types'
+import { ChordSymbol } from './ChordSymbol'
 
 interface Props {
   segments: Segment[]
+  sections?: Section[]
   symbols: string[]
   beats: number[]
   downbeats: number[]
@@ -12,10 +15,11 @@ interface Props {
   editMode: boolean
   onSeek(t: number): void
   onEdit(index: number): void
+  onEditSection?(index: number): void
   width?: number
 }
 
-export function ChordLane({ segments, symbols, beats, downbeats, duration, time, editMode, onSeek, onEdit, width }: Props) {
+export function ChordLane({ segments, sections = [], symbols, beats, downbeats, duration, time, editMode, onSeek, onEdit, onEditSection, width }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const [measured, setMeasured] = useState(800)
 
@@ -38,6 +42,15 @@ export function ChordLane({ segments, symbols, beats, downbeats, duration, time,
         style={{ transform: `translateX(${offset}px)`, width: duration * PX_PER_SECOND }}>
         {beats.map((b) => <span key={`b${b}`} className="beat-tick" style={{ left: b * PX_PER_SECOND }} />)}
         {downbeats.map((d) => <span key={`d${d}`} className="bar-line" style={{ left: d * PX_PER_SECOND }} />)}
+        {sections.map((sec, i) => (
+          <button key={`s${i}`} type="button" data-kind={sectionKind(sec.label)}
+            className={sec.uncertain ? 'section-tag guess' : 'section-tag'}
+            style={{ left: sec.start * PX_PER_SECOND, width: Math.max((sec.end - sec.start) * PX_PER_SECOND - 2, 24) }}
+            title={editMode ? 'Rename or move this section' : sec.uncertain ? `${sec.label} (automatic guess) — jump here` : `${sec.label} — jump here`}
+            onClick={() => (editMode && onEditSection ? onEditSection(i) : onSeek(sec.start))}>
+            {sec.label}{sec.uncertain ? '?' : ''}
+          </button>
+        ))}
         {segments.map((s, i) => {
           if (s.label === 'N') {
             if (!editMode) return null
@@ -59,7 +72,7 @@ export function ChordLane({ segments, symbols, beats, downbeats, duration, time,
               style={{ left: s.start * PX_PER_SECOND, width: Math.max((s.end - s.start) * PX_PER_SECOND - 4, 28) }}
               title={editMode ? 'Edit this chord' : 'Jump here'}
               onClick={() => (editMode ? onEdit(i) : onSeek(s.start))}>
-              {symbols[i]}
+              <ChordSymbol symbol={symbols[i]} />
             </button>
           )
         })}

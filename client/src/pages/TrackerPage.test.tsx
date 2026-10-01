@@ -2,13 +2,13 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { makeSong } from '../test/fixtures'
+import { SECTIONS, makeSong } from '../test/fixtures'
 import { renderAt } from '../test/router'
 import { TrackerPage } from './TrackerPage'
 
 const player = vi.hoisted(() => ({ ready: true, time: 1.0, playing: false, seek: vi.fn(), setRate: vi.fn() }))
 vi.mock('../hooks/useYouTubePlayer', () => ({ useYouTubePlayer: () => player }))
-vi.mock('../api', () => ({ api: { song: vi.fn() } }))
+vi.mock('../api', () => ({ api: { song: vi.fn(), analyze: vi.fn() } }))
 import { api } from '../api'
 const mocked = vi.mocked(api)
 
@@ -18,6 +18,7 @@ function renderTracker() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  localStorage.clear()
   player.time = 1.0
   mocked.song.mockResolvedValue(makeSong())
 })
@@ -94,6 +95,31 @@ describe('TrackerPage', () => {
     mocked.song.mockResolvedValue(makeSong({ warnings: ['BTC model weights not found.'] }))
     renderTracker()
     expect(await screen.findByRole('status', { name: /analysis warnings/i })).toHaveTextContent('BTC model weights not found.')
+  })
+
+  it('shows the section at the playhead and the one-time accuracy notice', async () => {
+    mocked.song.mockResolvedValue(makeSong({ sections: SECTIONS }))
+    renderTracker()
+    expect(await screen.findByLabelText('Current section')).toHaveTextContent('Intro')
+    expect(screen.getByRole('note', { name: /accuracy/i })).toBeInTheDocument()
+    expect(screen.queryByRole('status', { name: /improve this analysis/i })).toBeNull()
+  })
+
+  it('offers to detect sections for songs analyzed before sections existed', async () => {
+    const user = userEvent.setup()
+    mocked.analyze.mockResolvedValue({ job_id: 'j9' })
+    renderTracker()
+    await screen.findByTestId('current-chord')
+    await user.click(screen.getByRole('button', { name: 'Detect sections' }))
+    expect(mocked.analyze).toHaveBeenCalledWith('https://www.youtube.com/watch?v=abcdefghijk', 'accurate', true)
+  })
+
+  it('hides bass notes when the toggle is off', async () => {
+    const user = userEvent.setup()
+    renderTracker()
+    await screen.findByTestId('current-chord')
+    await user.click(screen.getByRole('checkbox', { name: 'Show bass notes' }))
+    expect(document.querySelector('main.hide-bass')).not.toBeNull()
   })
 
   it('shows an error for unknown songs', async () => {

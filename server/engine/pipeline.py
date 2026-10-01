@@ -6,7 +6,7 @@ from typing import Callable
 import librosa
 import soundfile as sf
 
-from server.engine import bass, beats, chords_btc, chords_tmpl, ingest, key, separate, snap
+from server.engine import bass, beats, chords_btc, chords_tmpl, ingest, key, sections, separate, snap
 from server.engine.chords_btc import DEFAULT_WEIGHTS_DIR
 
 SR = 22050
@@ -36,6 +36,7 @@ def analyze(video_id: str, work_dir: Path, options: Options, progress: ProgressF
     meta, wav = fetch_audio(video_id, work_dir)
     y, _ = librosa.load(str(wav), sr=SR, mono=True)
     harmonic_y, bass_y, harmonic_path, separated = y, y, wav, False
+    vocal_y = None
 
     if options.mode == "accurate":
         message = "Separating vocals, drums and bass (the slow part)"
@@ -43,6 +44,7 @@ def analyze(video_id: str, work_dir: Path, options: Options, progress: ProgressF
         stems = separate.separate(wav, work_dir / "stems", on_poll=lambda: progress("separating", 15, message))
         harmonic_y = separate.load_mix([stems["bass"], stems["other"]], SR)
         bass_y, _ = librosa.load(str(stems["bass"]), sr=SR, mono=True)
+        vocal_y, _ = librosa.load(str(stems["vocals"]), sr=SR, mono=True)
         harmonic_path = work_dir / "harmonic.wav"
         sf.write(harmonic_path, harmonic_y, SR)
         separated = True
@@ -68,16 +70,24 @@ def analyze(video_id: str, work_dir: Path, options: Options, progress: ProgressF
     progress("key", 92, "Estimating key")
     key_label = key.estimate_key(harmonic_y, SR)
 
+    duration = round(len(y) / SR, 3)
+    try:
+        song_sections = sections.detect_sections(y, SR, beat_info["downbeats"], duration, vocal_y)
+    except Exception as e:  # structure is a bonus: never lose the chords because of it
+        song_sections = []
+        warnings.append(f"Could not detect song sections: {e}")
+
     return {
         "video_id": video_id,
         "title": meta["title"],
-        "duration": round(len(y) / SR, 3),
+        "duration": duration,
         "key": key_label,
         "tempo": beat_info["tempo"],
         "time_signature": 4,
         "beats": beat_info["beats"],
         "downbeats": beat_info["downbeats"],
         "segments": segments,
+        "sections": song_sections,
         "engine": {"chords": engine_name, "separated": separated, "version": ENGINE_VERSION},
         "warnings": warnings,
     }

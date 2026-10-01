@@ -8,6 +8,21 @@ chord sheet (ChordPro, PDF, TXT, MIDI, JSON).
 separate worker process (no hosting yet — that's next). See
 [`docs/superpowers/specs/2026-09-27-chordarium-hosted-platform-design.md`](docs/superpowers/specs/2026-09-27-chordarium-hosted-platform-design.md).
 
+## Song sections and accuracy
+
+Songs are split into bar-aligned sections (Intro, Verse, Chorus, Bridge,
+Interlude, Outro) using bar-level similarity of chroma and timbre; sections
+that sound alike are grouped, and repetition, loudness and (in Accurate mode)
+the vocal stem decide the names. Exports group bars under these headings.
+Bass notes of slash chords are drawn in their own colour (toggle in the
+controls).
+
+Everything is detected automatically and can be wrong. Quick mode has no vocal
+stem, so its section labels are weaker guesses (shown with `?`); Accurate mode
+is slower but better for bass notes and sections. Loop-based songs get rougher
+sections. Sections can be renamed or moved in edit mode, and older songs can
+be re-analyzed from the tracker page (this discards local edits).
+
 ## Stack
 
 - **Server:** Flask API (request handling only), a separate worker process

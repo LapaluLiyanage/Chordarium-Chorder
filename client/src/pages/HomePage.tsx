@@ -52,16 +52,16 @@ export function HomePage() {
           <label className="mode-option">
             <span className="mode-title">
               <input type="radio" name="mode" checked={mode === 'fast'} onChange={() => setMode('fast')} />
-              Fast <span className="mode-time">~30 s</span>
+              Quick <span className="mode-time">~30 s</span>
             </span>
-            <p>Chords and beats from the full mix. Great for pop, rock and most songs.</p>
+            <p>A fast first look at the chords and beats. Section labels (Verse, Chorus…) are less certain. Best to start here.</p>
           </label>
           <label className="mode-option">
             <span className="mode-title">
               <input type="radio" name="mode" checked={mode === 'accurate'} onChange={() => setMode('accurate')} />
               Accurate <span className="mode-time">~3 min</span>
             </span>
-            <p>Separates vocals &amp; drums first. Best for jazz, live takes and extended chords.</p>
+            <p>Takes longer, but finds bass notes and song sections more reliably. Best for jazz, live takes and extended chords.</p>
           </label>
         </fieldset>
         <div><button className="button primary" type="submit" disabled={busy}>{busy ? 'Starting…' : 'Analyze'}</button></div>

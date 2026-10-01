@@ -56,3 +56,13 @@ def test_midi_tempo_and_length(timeline):
     tempos = [m.tempo for m in mid.tracks[0] if m.type == "set_tempo"]
     assert tempos == [mido.bpm2tempo(120.0)]
     assert abs(mid.length - 8.0) < 0.05
+
+
+def test_pdf_shows_section_headings_disclaimer_and_bass_colour(timeline):
+    timeline["sections"] = [{"start": 0.0, "end": 4.0, "label": "Verse 1", "uncertain": True},
+                            {"start": 4.0, "end": 8.0, "label": "Chorus", "uncertain": True}]
+    data = to_pdf(timeline, ExportOptions())
+    text = pdf_text(data)
+    assert "Verse 1" in text and "Chorus" in text and "may contain errors" in text
+    stream = PdfReader(BytesIO(data)).pages[0].get_contents().get_data()
+    assert b".043137 .486275 .52549 rg" in stream  # the bass-note colour (#0b7c86)

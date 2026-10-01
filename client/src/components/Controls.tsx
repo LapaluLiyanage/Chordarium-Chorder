@@ -48,6 +48,11 @@ export function Controls(p: Props) {
           onChange={(e) => onChange({ simplify: e.target.checked })} />
         Simplify
       </label>
+      <label className="control">
+        <input type="checkbox" aria-label="Show bass notes" checked={settings.showBass}
+          onChange={(e) => onChange({ showBass: e.target.checked })} />
+        Show bass notes
+      </label>
       <div className="control">
         <button type="button" className="button" onClick={p.onSetA}>Set A{p.loop.a !== null ? ` ${clock(p.loop.a)}` : ''}</button>
         <button type="button" className="button" onClick={p.onSetB}>Set B{p.loop.b !== null ? ` ${clock(p.loop.b)}` : ''}</button>
