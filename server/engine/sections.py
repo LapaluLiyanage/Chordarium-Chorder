@@ -4,6 +4,7 @@ Boundaries come from bar-level self-similarity (chroma + timbre). Sections that 
 group, and the group's role (repetition, loudness, vocals) decides its name. Every guess is
 heuristic, so the labels are meant to be edited by the user.
 """
+import math
 from collections import defaultdict
 
 import librosa
@@ -11,8 +12,9 @@ import numpy as np
 
 HOP = 512
 MIN_BARS = 8                 # shorter songs are left as one unlabelled block
-MIN_SECTION_BARS = 8
+MIN_SECTION_BARS = 8         # at a normal tempo; scaled up for fast songs so sections stay phrase-sized
 WINDOW_BARS = 8
+MIN_SECTION_SECONDS = 12.0
 BOUNDARY_FLOOR = 0.3
 LONG_FLOOR = 0.7
 GROUP_SIMILARITY = 0.45
@@ -41,15 +43,16 @@ def _cosine(a: np.ndarray, b: np.ndarray) -> float:
     return float(a @ b / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-9))
 
 
-def _boundaries(x: np.ndarray) -> list[int]:
+def _boundaries(x: np.ndarray, scale: int = 1) -> list[int]:
     """Bar indices where a new section starts (always includes 0).
 
     A boundary is where the average sound of the next bars differs most from the previous bars.
     """
     n = len(x)
+    window, min_bars = WINDOW_BARS * scale, MIN_SECTION_BARS * scale
     short, long_ = np.zeros(n), np.zeros(n)
-    for b in range(MIN_SECTION_BARS // 2, n - MIN_SECTION_BARS // 2 + 1):
-        for out, w in ((short, WINDOW_BARS // 2), (long_, WINDOW_BARS)):
+    for b in range(min_bars // 2, n - min_bars // 2 + 1):
+        for out, w in ((short, window // 2), (long_, window)):
             out[b] = 1 - _cosine(x[max(0, b - w):b].mean(axis=0), x[b:min(n, b + w)].mean(axis=0))
     # the short window pins a boundary down; the long window must agree, which ignores one-off changes
     novelty = np.array([short[b] if long_[max(0, b - 2):b + 3].max() >= LONG_FLOOR else 0.0 for b in range(n)])
@@ -60,7 +63,7 @@ def _boundaries(x: np.ndarray) -> list[int]:
             break
         if novelty[b] < novelty[max(0, b - 3):b + 4].max():
             continue
-        if all(abs(b - a) >= MIN_SECTION_BARS for a in accepted) and n - b >= MIN_SECTION_BARS:
+        if all(abs(b - a) >= min_bars for a in accepted) and n - b >= min_bars:
             accepted.append(b)
     return sorted(accepted)
 
@@ -149,7 +152,9 @@ def detect_sections(y: np.ndarray, sr: int, downbeats: list[float], duration: fl
         return []
     bar_times = bar_times + [duration]
     x, energy, vocal = _bar_features(y, sr, bar_times, vocal_y)
-    starts = _boundaries(x)
+    bar_seconds = float(np.median(np.diff(bar_times)))
+    scale = max(1, math.ceil(MIN_SECTION_SECONDS / (MIN_SECTION_BARS * bar_seconds)))
+    starts = _boundaries(x, scale)
     spans = list(zip(starts, starts[1:] + [len(x)]))
     groups = _group([x[a:b].mean(axis=0) for a, b in spans])
     sung = None

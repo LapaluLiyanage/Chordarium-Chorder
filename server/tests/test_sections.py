@@ -3,13 +3,13 @@ import numpy as np
 from server.engine.sections import detect_sections, label_sections
 from server.tests.synth import SR, chord_audio
 
-BAR = 1.0
+BAR = 2.0
 SECTION_BARS = 8
 C, D, E, F, G, A = 0, 2, 4, 5, 7, 9
 VERSE = [[C, E, G], [A, C + 12, E + 12], [F, A, C + 12], [G, 11, D + 12]]
 CHORUS = [[D, F, A], [10, D + 12, F + 12], [C, E, G], [G, 11, D + 12]]
 INTRO = [[E, G, 11]] * 4
-OUTRO = [[A, C + 12, E + 12]] * 4
+OUTRO = [[6, 10, 13]] * 4  # F# major: unlike anything in the verse or chorus
 
 
 def bars(progression, gain):
