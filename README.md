@@ -8,6 +8,16 @@ chord sheet (ChordPro, PDF, TXT, MIDI, JSON).
 separate worker process (no hosting yet — that's next). See
 [`docs/superpowers/specs/2026-09-27-chordarium-hosted-platform-design.md`](docs/superpowers/specs/2026-09-27-chordarium-hosted-platform-design.md).
 
+## Run it with Docker (private use)
+
+```bash
+cp .env.example .env        # set POSTGRES_PASSWORD
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Then open http://127.0.0.1:8080. It runs the database, API, worker and web client together and listens on this
+machine only. See [`docs/deploy.md`](docs/deploy.md) for backups, reaching it from other devices and troubleshooting.
+
 ## Song sections and accuracy
 
 Songs are split into bar-aligned sections (Intro, Verse, Chorus, Bridge,
