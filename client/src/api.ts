@@ -34,8 +34,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 export type AnalyzeResponse = { job_id?: string; song_id?: string; cached?: boolean }
 
 export const api = {
-  analyze: (url: string, mode: 'fast' | 'accurate') =>
-    request<AnalyzeResponse>('/analyze', { method: 'POST', body: JSON.stringify({ url, mode }) }),
+  analyze: (url: string, mode: 'fast' | 'accurate', refresh = false) =>
+    request<AnalyzeResponse>('/analyze', { method: 'POST', body: JSON.stringify(refresh ? { url, mode, refresh } : { url, mode }) }),
   job: (id: string) => request<Job>(`/jobs/${id}`),
   cancelJob: (id: string) => request<{ cancelled: boolean }>(`/jobs/${id}/cancel`, { method: 'POST' }),
   songs: () => request<SongSummary[]>('/songs'),

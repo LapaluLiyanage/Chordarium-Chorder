@@ -10,6 +10,7 @@
   --accent-deep: #c06a1f;
   --accent-ink: #1c1712;
   --danger: #ff8a65;
+  --bass: #4fc3c9;
   --radius: 12px;
   --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --chord-font: "Archivo", "Inter", system-ui, sans-serif;
@@ -18,7 +19,7 @@
 @media (prefers-color-scheme: light) {
   :root {
     --bg: #faf7f0; --surface: #ffffff; --surface-2: #f1ece0; --cream: #1c1712; --text: #221c14;
-    --muted: #7a6f5c; --line: #e3dbca; --accent-ink: #ffffff; color-scheme: light;
+    --muted: #7a6f5c; --line: #e3dbca; --accent-ink: #ffffff; --bass: #0b7c86; color-scheme: light;
   }
 }
 * { box-sizing: border-box; }
@@ -81,7 +82,9 @@ progress { width: 100%; height: 8px; accent-color: var(--accent); border-radius:
 .hero-current .cs-root { font-size: clamp(3.5rem, 9vw, 7.4rem); }
 .hero-current .cs-quality { font-size: clamp(2.24rem, 5.76vw, 4.74rem); }
 .hero-current .cs-ext { font-size: clamp(1.54rem, 3.96vw, 3.26rem); position: relative; top: -0.44em; margin-left: 0.03em; }
-.hero-current .cs-bass { font-size: clamp(2.1rem, 5.4vw, 4.44rem); font-weight: 500; opacity: 0.85; }
+.hero-current .cs-bass { font-size: clamp(2.1rem, 5.4vw, 4.44rem); font-weight: 500; }
+.cs-bass { color: var(--bass); }
+.hide-bass .cs-bass { display: none; }
 .hero-current .cs.low-confidence { text-decoration: underline dotted; text-decoration-color: var(--muted); text-underline-offset: 8px; }
 .hero-next { display: flex; align-items: center; gap: 12px; font-size: 1.6rem; font-weight: 700; font-family: var(--chord-font); }
 .hero-next-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-family: var(--font); font-weight: 600; }
@@ -95,6 +98,20 @@ progress { width: 100%; height: 8px; accent-color: var(--accent); border-radius:
 .beat-tick { position: absolute; bottom: 0; width: 1px; height: 10px; background: var(--line); }
 .bar-line { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--muted); opacity: 0.5; }
 .chip { position: absolute; top: 22px; height: 48px; padding: 0 10px; text-align: left; font-family: var(--chord-font); font-weight: 700; font-size: 1.1rem; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); white-space: nowrap; overflow: hidden; }
+.section-tag { position: absolute; top: 2px; height: 18px; padding: 0 8px; border: 0; border-left: 3px solid var(--sec, var(--muted)); border-radius: 3px; background: color-mix(in srgb, var(--sec, var(--muted)) 22%, transparent); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 18px; }
+.section-tag.guess { border-left-style: dashed; }
+.section-tag[data-kind="intro"], .section-tag[data-kind="outro"] { --sec: #8d8fa3; }
+.section-tag[data-kind="verse"] { --sec: #5b9bd5; }
+.section-tag[data-kind="chorus"] { --sec: #e8934a; }
+.section-tag[data-kind="bridge"] { --sec: #b07cd8; }
+.section-tag[data-kind="interlude"] { --sec: #6fbf8b; }
+.lane-legend { margin: -8px 0 0; font-size: 0.8rem; }
+.legend-bass { color: var(--bass); font-weight: 700; }
+.legend-chord { font-weight: 700; }
+.notice { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.notice p { margin: 0; flex: 1 1 320px; }
+.guess-mark { font-weight: 700; color: var(--accent); }
+.banner .button { margin-top: 4px; }
 .chip.past { opacity: 0.45; }
 .chip.active { border-color: var(--accent); color: var(--accent); }
 .chip.low { text-decoration: underline dotted var(--muted); }

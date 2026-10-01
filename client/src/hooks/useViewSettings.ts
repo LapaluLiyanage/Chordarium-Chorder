@@ -7,9 +7,10 @@ export interface ViewSettings {
   capo: number
   simplify: boolean
   rate: number
+  showBass: boolean
 }
 
-export const DEFAULT_VIEW: ViewSettings = { transpose: 0, capo: 0, simplify: false, rate: 1 }
+export const DEFAULT_VIEW: ViewSettings = { transpose: 0, capo: 0, simplify: false, rate: 1, showBass: true }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, Math.round(Number(v) || 0)))
 
@@ -20,6 +21,7 @@ export function normalizeView(v: Partial<ViewSettings>): ViewSettings {
     capo: clamp(m.capo, 0, 7),
     simplify: Boolean(m.simplify),
     rate: RATES.includes(m.rate) ? m.rate : 1,
+    showBass: m.showBass !== false,
   }
 }
 

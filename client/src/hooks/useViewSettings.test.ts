@@ -7,8 +7,8 @@ afterEach(() => vi.restoreAllMocks())
 describe('normalizeView', () => {
   it('clamps ranges and snaps speed', () => {
     expect(normalizeView({ transpose: 9, capo: -1, rate: 3 })).toEqual({ ...DEFAULT_VIEW, transpose: 6, capo: 0, rate: 1 })
-    expect(normalizeView({ transpose: -8, capo: 12, rate: 0.75, simplify: true }))
-      .toEqual({ transpose: -6, capo: 7, rate: 0.75, simplify: true })
+    expect(normalizeView({ transpose: -8, capo: 12, rate: 0.75, simplify: true, showBass: true }))
+      .toEqual({ transpose: -6, capo: 7, rate: 0.75, simplify: true, showBass: true })
   })
 })
 

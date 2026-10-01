@@ -67,6 +67,7 @@ def test_chordpro_grid(timeline):
         "{title: Test Song}\n"
         "{key: Gm}\n"
         "{tempo: 120}\n"
+        "# Chords and sections were detected automatically and may contain errors.\n"
         "\n"
         "{start_of_grid}\n"
         "| Cm7 . . . | F7 . . . | Bbmaj7 . Ebmaj7 . | D7/F# . . . |\n"
@@ -81,11 +82,41 @@ def test_txt(timeline):
         "Test Song",
         "=========",
         "Key: G minor | Tempo: 120 BPM",
+        "Chords and sections were detected automatically and may contain errors.",
         "",
-        "| Cm7 . . . | F7 . . . |",
     ]
+    assert "| Cm7 . . . | F7 . . . |" in text
     assert text.rstrip().endswith("Chords: Cm7, F7, Bbmaj7, Ebmaj7, D7/F#")
 
 
 def test_json_round_trips(timeline):
     assert json.loads(to_json(timeline, ExportOptions())) == timeline
+
+
+def with_sections(timeline):
+    # the fixture has 4 bars of 2 s: split into an intro (bars 1-2) and a chorus (bars 3-4)
+    timeline["sections"] = [
+        {"start": 0.0, "end": 4.0, "label": "Intro", "uncertain": False},
+        {"start": 4.0, "end": 8.0, "label": "Chorus", "uncertain": False},
+    ]
+    return timeline
+
+
+def test_txt_groups_bars_under_section_headings(timeline):
+    text = to_txt(with_sections(timeline), ExportOptions())
+    assert text.index("[Intro]") < text.index("[Chorus]")
+    assert "| Cm7 . . . | F7 . . . |" in text.split("[Chorus]")[0]
+    assert "Bbmaj7" not in text.split("[Chorus]")[0]
+    assert "may contain errors" in text
+
+
+def test_chordpro_labels_each_section_grid(timeline):
+    cho = to_chordpro(with_sections(timeline), ExportOptions())
+    assert "{start_of_grid: Intro}" in cho and "{start_of_grid: Chorus}" in cho
+    assert cho.count("{end_of_grid}") == 2
+    assert "# Chords and sections were detected automatically" in cho
+
+
+def test_songs_without_sections_export_one_block(timeline):
+    assert to_txt(timeline, ExportOptions()).count("[") == 0
+    assert to_chordpro(timeline, ExportOptions()).count("{start_of_grid}") == 1

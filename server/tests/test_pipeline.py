@@ -80,3 +80,17 @@ def test_progress_callback_can_cancel(tmp_path, monkeypatch):
         pass
     else:
         raise AssertionError("expected Cancelled")
+
+
+def test_timeline_always_has_a_sections_list(tmp_path, monkeypatch):
+    t, _ = run(tmp_path, monkeypatch, mode="fast", engine="template")
+    assert t["sections"] == []  # the 12 s fixture is too short to split
+
+
+def test_section_detection_failure_keeps_the_chords(tmp_path, monkeypatch):
+    def boom(*a, **k):
+        raise RuntimeError("no structure")
+    monkeypatch.setattr(pipeline.sections, "detect_sections", boom)
+    t, _ = run(tmp_path, monkeypatch, mode="fast", engine="template")
+    assert t["sections"] == [] and t["segments"]
+    assert "Could not detect song sections" in t["warnings"][0]

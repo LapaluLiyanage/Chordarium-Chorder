@@ -54,6 +54,14 @@ def test_analyze_returns_cached_song(ctx, timeline):
     assert store.get_active_job(VID) is None
 
 
+def test_analyze_refresh_reanalyzes_a_cached_song(ctx, timeline):
+    client, store = ctx
+    timeline["video_id"] = VID
+    store.save_song(timeline)
+    r = client.post("/api/analyze", json={"url": f"https://www.youtube.com/watch?v={VID}", "refresh": True})
+    assert r.status_code == 202 and store.get_active_job(VID)["id"] == r.get_json()["job_id"]
+
+
 def test_song_crud(ctx, timeline):
     client, store = ctx
     song_id = store.save_song(timeline)
