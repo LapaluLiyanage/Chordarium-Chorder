@@ -1,4 +1,5 @@
 """YouTube link -> mono 22.05 kHz WAV via yt-dlp + ffmpeg."""
+import logging
 import re
 import subprocess
 from pathlib import Path
@@ -6,6 +7,8 @@ from urllib.parse import parse_qs, urlparse
 
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
+
+log = logging.getLogger(__name__)
 
 MAX_DURATION = 900
 SAMPLE_RATE = 22050
@@ -49,7 +52,9 @@ def _friendly(message: str) -> str:
         return "This video is age-restricted and can't be downloaded."
     if "video unavailable" in m or "has been removed" in m:
         return "This video is unavailable or was removed."
-    return "Couldn't download this video. Try updating yt-dlp: pip install -U yt-dlp"
+    log.warning("yt-dlp could not fetch the video: %s", message.strip()[-400:])
+    return ("Couldn't download this video. This is often temporary, so try again in a minute. "
+            "If it keeps failing, update yt-dlp (pip install -U yt-dlp).")
 
 
 def probe(video_id: str) -> dict:

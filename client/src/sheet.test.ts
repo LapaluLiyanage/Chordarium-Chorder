@@ -12,6 +12,11 @@ describe('buildBars', () => {
     expect(bars.map((b) => b.chords)).toEqual([['Cm7'], ['F7'], ['Bbmaj7', 'Ebmaj7'], ['D7/F#']])
   })
 
+  it('records how many beats each chord lasts', () => {
+    const bars = buildBars(t, t.segments, { tonic })
+    expect(bars.map((b) => b.lengths)).toEqual([[4], [4], [2, 2], [4]])
+  })
+
   it('flags bars that contain a low-confidence chord as guesses', () => {
     const bars = buildBars(t, t.segments, { tonic })
     expect(bars.map((b) => b.guess)).toEqual([false, false, true, true])

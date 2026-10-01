@@ -4,7 +4,7 @@ from server.export.grid import DISCLAIMER, ExportOptions, chord_legend, grid_lin
 
 def to_txt(timeline: dict, opts: ExportOptions) -> str:
     h = header(timeline, opts)
-    meta = f"Key: {h['key_text']} | Tempo: {h['tempo']} BPM"
+    meta = f"Key: {h['key_text']} | Tempo: {h['tempo']} BPM | Time: {h['time_signature']}"
     if h["capo"]:
         meta += f" | Capo: {h['capo']}"
     lines = [h["title"], "=" * len(h["title"]), meta, DISCLAIMER, ""]

@@ -4,7 +4,7 @@ from server.export.grid import DISCLAIMER, ExportOptions, grid_lines, header, se
 
 def to_chordpro(timeline: dict, opts: ExportOptions) -> str:
     h = header(timeline, opts)
-    lines = [f"{{title: {h['title']}}}", f"{{key: {h['key_symbol']}}}", f"{{tempo: {h['tempo']}}}"]
+    lines = [f"{{title: {h['title']}}}", f"{{key: {h['key_symbol']}}}", f"{{tempo: {h['tempo']}}}", f"{{time: {h['time_signature']}}}"]
     if h["capo"]:
         lines.append(f"{{capo: {h['capo']}}}")
     lines.append(f"# {DISCLAIMER}")

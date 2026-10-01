@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
+import { flipIn } from '../motion'
 import { sectionAt, sectionColor } from '../sections'
 import { activeIndex, beatsUntil, isLowConfidence, upcomingIndex } from '../sync'
 import type { Section, Segment } from '../types'
@@ -34,6 +35,8 @@ export function PlayPanel({ title, meta, badge, segments, symbols, sections, bea
   const next = upcomingIndex(segments, time)
   const toNext = next >= 0 ? Math.min(beatsUntil(beats, time, segments[next].start), 4) : 0
   const section = sectionAt(sections, time)
+  const chordRef = useRef<HTMLDivElement>(null)
+  useEffect(() => flipIn(chordRef.current), [idx])
   return (
     <section className="play-panel" aria-label="Play along">
       <div className="play-meta">
@@ -42,7 +45,7 @@ export function PlayPanel({ title, meta, badge, segments, symbols, sections, bea
         <span>{badge}</span>
       </div>
       <div className="play-hero">
-        <div className="big-chord" data-testid="current-chord">
+        <div className="big-chord" data-testid="current-chord" ref={chordRef}>
           {countdown ? <span className="countdown" aria-live="assertive">{countdown}</span>
             : idx >= 0 ? <ChordSymbol symbol={symbols[idx]} lowConfidence={isLowConfidence(segments[idx].confidence)} /> : '—'}
         </div>

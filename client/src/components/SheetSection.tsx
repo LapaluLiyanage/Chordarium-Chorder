@@ -30,6 +30,12 @@ interface Props {
 
 const signed = (n: number) => (n > 0 ? `+${n}` : String(n))
 
+/** Crowded bars get smaller type so every chord name stays readable. */
+function fit(bar: SheetBar): string {
+  const chars = bar.chords.join('').length
+  return chars > 15 ? 'fit-xs' : chars > 8 ? 'fit-sm' : ''
+}
+
 /** The whole song as a bar grid grouped by section, synced to playback. */
 export const SheetSection = memo(function SheetSection(p: Props) {
   return (
@@ -70,12 +76,18 @@ export const SheetSection = memo(function SheetSection(p: Props) {
                 <span className="bars-range">BARS {first}–{last}</span>
               </div>
               {chunk(sec.bars, p.perRow).map((row, ri) => (
-                <div key={ri} className="sheet-row" style={{ gridTemplateColumns: `repeat(${p.perRow}, minmax(0, 1fr))` }}>
+                <div key={ri} className="sheet-row" data-per-row={p.perRow} style={{ gridTemplateColumns: `repeat(${p.perRow}, minmax(0, 1fr))` }}>
                   {row.map((bar) => (
                     <button key={bar.index} type="button" aria-label={`Bar ${bar.index + 1}: ${bar.chords.join(' ')}${bar.guess ? ' (guess)' : ''}`}
-                      className={['bar-cell', p.currentBar === bar.index ? 'now' : '', bar.guess ? 'guess' : ''].join(' ').trim()}
+                      className={['bar-cell', fit(bar), p.currentBar === bar.index ? 'now' : '', bar.guess ? 'guess' : ''].join(' ').trim()}
                       onClick={() => p.onSeekBar(bar)}>
-                      {bar.chords.map((c, i) => <ChordSymbol key={i} symbol={c} />)}
+                      <span className="bar-chords">
+                        {bar.chords.map((c, i) => (
+                          <span key={i} className="bar-chord" style={{ flexGrow: bar.lengths[i] }}><ChordSymbol symbol={c} /></span>
+                        ))}
+                      </span>
+                      <span className="bar-ruler" aria-hidden="true"
+                        style={{ backgroundSize: `${100 / bar.lengths.reduce((a, b) => a + b, 0)}% 100%` }} />
                       {bar.guess && <span className="guess-mark" aria-hidden="true">?</span>}
                     </button>
                   ))}

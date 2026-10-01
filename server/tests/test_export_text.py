@@ -1,17 +1,17 @@
 import json
 
 from server.export.chordpro import to_chordpro
-from server.export.grid import ExportOptions, build_bars, chord_legend, grid_lines
+from server.export.grid import ExportOptions, bar_segments, build_bars, chord_legend, grid_lines
 from server.export.json_export import to_json
 from server.export.txt import to_txt
 
 
 def test_build_bars_marks_continuations(timeline):
     assert build_bars(timeline, ExportOptions()) == [
-        ["Cm7", "|", "|", "|"],
-        ["F7", "|", "|", "|"],
-        ["Bbmaj7", "|", "Ebmaj7", "|"],
-        ["D7/F#", "|", "|", "|"],
+        ["Cm7", ".", ".", "."],
+        ["F7", ".", ".", "."],
+        ["Bbmaj7", ".", "Ebmaj7", "."],
+        ["D7/F#", ".", ".", "."],
     ]
 
 
@@ -52,8 +52,19 @@ def test_missing_downbeats_fall_back_to_every_fourth_beat(timeline):
 
 
 def test_grid_lines_wrap_rows():
-    bars = [["C", "|"], ["G", "|"], ["Am", "|"]]
-    assert grid_lines(bars, 2) == ["| C | | G | |", "| Am | |"]
+    bars = [["C", "."], ["G", "."], ["Am", "."]]
+    assert grid_lines(bars, 2) == ["|| C || G ||", "|| Am ||"]
+
+
+def test_bar_segments_count_the_beats_each_chord_lasts():
+    assert bar_segments(["Bbmaj7", ".", "Ebmaj7", "."]) == [("Bbmaj7", 2), ("Ebmaj7", 2)]
+    assert bar_segments(["Cm7", ".", ".", "."]) == [("Cm7", 4)]
+    assert bar_segments(["Am", "G", "F", "."]) == [("Am", 1), ("G", 1), ("F", 2)]
+
+
+def test_bar_lines_and_chords_inside_a_bar_use_different_marks():
+    bars = [["Bbmaj7", ".", "Ebmaj7", "."], ["Fm", ".", ".", "."]]
+    assert grid_lines(bars, 4) == ["|| Bbmaj7 | Ebmaj7 || Fm ||"]
 
 
 def test_chord_legend(timeline):
@@ -67,10 +78,11 @@ def test_chordpro_grid(timeline):
         "{title: Test Song}\n"
         "{key: Gm}\n"
         "{tempo: 120}\n"
+        "{time: 4/4}\n"
         "# Chords and sections were detected automatically and may contain errors.\n"
         "\n"
         "{start_of_grid}\n"
-        "| Cm7 | | | | F7 | | | | Bbmaj7 | Ebmaj7 | | D7/F# | | | |\n"
+        "|| Cm7 || F7 || Bbmaj7 | Ebmaj7 || D7/F# ||\n"
         "{end_of_grid}\n"
     )
     assert "{capo: 3}" in to_chordpro(timeline, ExportOptions(capo=3))
@@ -81,11 +93,11 @@ def test_txt(timeline):
     assert text.splitlines()[:5] == [
         "Test Song",
         "=========",
-        "Key: G minor | Tempo: 120 BPM",
+        "Key: G minor | Tempo: 120 BPM | Time: 4/4",
         "Chords and sections were detected automatically and may contain errors.",
         "",
     ]
-    assert "| Cm7 | | | | F7 | | | |" in text
+    assert "|| Cm7 || F7 ||" in text
     assert text.rstrip().endswith("Chords: Cm7, F7, Bbmaj7, Ebmaj7, D7/F#")
 
 
@@ -105,7 +117,7 @@ def with_sections(timeline):
 def test_txt_groups_bars_under_section_headings(timeline):
     text = to_txt(with_sections(timeline), ExportOptions())
     assert text.index("[Intro]") < text.index("[Chorus]")
-    assert "| Cm7 | | | | F7 | | | |" in text.split("[Chorus]")[0]
+    assert "|| Cm7 || F7 ||" in text.split("[Chorus]")[0]
     assert "Bbmaj7" not in text.split("[Chorus]")[0]
     assert "may contain errors" in text
 

@@ -1,4 +1,5 @@
-import { memo, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { gsap, motionOK } from '../motion'
 import { Link } from 'react-router-dom'
 import { recentProgress } from '../hooks/useLibraryStore'
 import { formatClock, isMinorKey, keyShort, keyTint, splitTitle } from '../lib/songMeta'
@@ -29,6 +30,19 @@ export const LibrarySection = memo(function LibrarySection({ songs, favourites, 
   const [keyFilter, setKeyFilter] = useState<KeyFilter>('ALL')
   const [sort, setSort] = useState<Sort>('RECENT')
   const [favOnly, setFavOnly] = useState(false)
+
+  const grid = useRef<HTMLDivElement>(null)
+  const firstRun = useRef(true)
+  // cards re-deal themselves when the filter, sort or favourites view changes
+  useEffect(() => {
+    if (firstRun.current) { firstRun.current = false; return }
+    if (grid.current && motionOK()) {
+      gsap.from(grid.current.querySelectorAll('.song-card'), { opacity: 0, y: 24, scale: 0.96, stagger: 0.04, duration: 0.45, ease: 'power3.out' })
+    }
+  }, [keyFilter, sort, favOnly])
+  const pop = (e: MouseEvent<HTMLElement>) => {
+    if (motionOK()) gsap.fromTo(e.currentTarget, { scale: 0.5, rotation: -30 }, { scale: 1, rotation: 0, duration: 0.6, ease: 'elastic.out(1,.4)' })
+  }
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -86,7 +100,7 @@ export const LibrarySection = memo(function LibrarySection({ songs, favourites, 
         </div>
       </div>
       {songs === null ? <p className="lib-empty">Loading…</p> : (
-        <div className="song-grid" data-reveal="1">
+        <div className="song-grid" data-reveal="1" ref={grid}>
           {visible.map((s, i) => {
             const { title, artist } = splitTitle(s.title)
             const fav = favourites.has(s.id)
@@ -104,7 +118,7 @@ export const LibrarySection = memo(function LibrarySection({ songs, favourites, 
                     <span className="song-sub">{artist ? `${artist} · ` : ''}{Math.round(s.tempo)} BPM</span>
                   </div>
                   <button type="button" className="fav-btn" aria-pressed={fav} aria-label={`${fav ? 'Remove' : 'Add'} ${title} ${fav ? 'from' : 'to'} favourites`}
-                    onClick={() => onFavourite(s.id)}>{fav ? '★' : '☆'}</button>
+                    onClick={(e) => { pop(e); onFavourite(s.id) }}>{fav ? '★' : '☆'}</button>
                 </div>
               </div>
             )
