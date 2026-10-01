@@ -1,0 +1,29 @@
+# One image for both the API and the analysis worker (the compose file picks the command).
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    CHORDARIUM_DATA=/data
+
+# ffmpeg turns downloaded audio into WAV; git fetches the chord model; libsndfile is for soundfile
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg git libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# CPU-only PyTorch first (the default wheel pulls gigabytes of CUDA libraries we do not use)
+RUN pip install torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+
+COPY requirements.txt .
+RUN pip install -r requirements.txt gunicorn
+
+COPY server ./server
+COPY scripts ./scripts
+COPY shared ./shared
+
+# BTC chord model (code + pretrained weights). Without it the app falls back to the simpler template recognizer.
+RUN python scripts/setup_models.py
+
+EXPOSE 5000
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "server.app:create_app()"]
