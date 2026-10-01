@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from server.theory import chord as ch
 
 NO_CHORD = "N.C."
-HOLD = "|"  # a held beat; drawn like a bar line, as the user asked
+HOLD = "."  # internal marker for a held beat; it is never printed (see bar_segments)
 
 
 @dataclass(frozen=True)
@@ -87,11 +87,24 @@ def section_blocks(timeline: dict, opts: ExportOptions) -> list[tuple[str | None
     return blocks
 
 
+def bar_segments(bar: list[str]) -> list[tuple[str, int]]:
+    """A bar as (chord, beats it lasts) pairs, e.g. ['Bbmaj7', '.', 'Ebmaj7', '.'] -> [('Bbmaj7', 2), ('Ebmaj7', 2)]."""
+    segments: list[list] = []
+    for slot in bar:
+        if slot == HOLD and segments:
+            segments[-1][1] += 1
+        else:
+            segments.append([slot, 1])
+    return [(chord, beats) for chord, beats in segments]
+
+
 def grid_lines(bars: list[list[str]], per_row: int) -> list[str]:
+    """One line per row: `||` marks each bar line, and `|` separates the chords inside a bar."""
     lines = []
     for i in range(0, len(bars), per_row):
         row = bars[i:i + per_row]
-        lines.append("| " + " | ".join(" ".join(bar) for bar in row) + " |")
+        cells = [" | ".join(chord for chord, _ in bar_segments(bar)) for bar in row]
+        lines.append("|| " + " || ".join(cells) + " ||")
     return lines
 
 
@@ -117,5 +130,6 @@ def header(timeline: dict, opts: ExportOptions) -> dict:
         "key_text": ch.format_key(timeline["key"], opts.transpose),
         "key_symbol": ch.key_symbol(timeline["key"], opts.transpose),
         "tempo": round(timeline["tempo"]),
+        "time_signature": f"{timeline.get('time_signature', 4)}/4",
         "capo": opts.capo,
     }

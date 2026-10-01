@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ensureGsap, gsap, motionOK } from '../motion'
 import type { DemoClock } from '../hooks/useDemoClock'
 import { barAt } from '../sheet'
 import { activeIndex } from '../sync'
@@ -18,6 +19,24 @@ const FEATURES = [
 export function ToolSection({ timeline, clock }: { timeline: Timeline; clock: DemoClock }) {
   const [feat, setFeat] = useState(0)
   const [paused, setPaused] = useState(false)
+  const section = useRef<HTMLElement>(null)
+  const featureRef = useRef<HTMLDivElement>(null)
+
+  // the rings drift as the section scrolls past
+  useEffect(() => {
+    if (!section.current || !motionOK()) return
+    ensureGsap()
+    const ctx = gsap.context(() => {
+      const trigger = { trigger: section.current, start: 'top bottom', end: 'bottom top', scrub: 1 }
+      gsap.to('.ring-amber', { rotation: 40, yPercent: 10, ease: 'none', scrollTrigger: trigger })
+      gsap.to('.ring-blue', { rotation: -30, yPercent: -12, ease: 'none', scrollTrigger: trigger })
+    }, section.current)
+    return () => ctx.revert()
+  }, [])
+
+  useEffect(() => {
+    if (featureRef.current && motionOK()) gsap.fromTo(featureRef.current, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' })
+  }, [feat])
 
   useEffect(() => {
     if (paused || (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return
@@ -33,10 +52,10 @@ export function ToolSection({ timeline, clock }: { timeline: Timeline; clock: De
   const f = FEATURES[feat]
 
   return (
-    <section id="tool" className="tool" data-reveal="1">
+    <section id="tool" className="tool" data-reveal="1" ref={section}>
       <div className="tool-copy">
         <div className="tool-top"><span>001</span><span>THE TOOL</span><span>2026</span></div>
-        <div className="tool-feature" key={feat}>
+        <div className="tool-feature" ref={featureRef}>
           <span className="tool-tag" style={{ background: f.color }}>{f.tag}</span>
           <h2 className="mega">{f.title}</h2>
           <p>{f.body}</p>

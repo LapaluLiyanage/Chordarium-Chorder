@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { playChord } from '../audio'
+import { flipIn } from '../motion'
 import type { DemoClock } from '../hooks/useDemoClock'
 import { barAt } from '../sheet'
 import { sectionAt } from '../sections'
@@ -19,6 +20,8 @@ export function IntroSection({ timeline, clock }: { timeline: Timeline; clock: D
   const bar = barAt(timeline.downbeats, clock.time) + 1
   const section = sectionAt(timeline.sections ?? [], clock.time)
 
+  const labelRef = useRef<HTMLDivElement>(null)
+  useEffect(() => flipIn(labelRef.current), [idx])
   const last = useRef(-1)
   useEffect(() => {
     if (!sound || !clock.playing || idx < 0 || idx === last.current || !chord) return
@@ -49,10 +52,12 @@ export function IntroSection({ timeline, clock }: { timeline: Timeline; clock: D
         </div>
       </div>
       <div className="intro-wheel">
-        <ChordWheel chord={chord ? transpose(chord, 0) : null} sound={sound} />
+        <ChordWheel chord={chord ? transpose(chord, 0) : null} sound={sound} time={clock.time} tempo={timeline.tempo} />
         <div className="wheel-centre" aria-live="off">
-          <div className="wheel-chord">{seg ? <ChordSymbol symbol={symbol} /> : '—'}</div>
-          <div className="wheel-where">BAR {Math.max(bar, 1)} · {(section?.label ?? 'SONG').toUpperCase()}</div>
+          <div className="wheel-centre-text">
+            <div className="wheel-chord" ref={labelRef}>{seg ? <ChordSymbol symbol={symbol} /> : '—'}</div>
+            <div className="wheel-where">BAR {Math.max(bar, 1)} · {(section?.label ?? 'SONG').toUpperCase()}</div>
+          </div>
         </div>
       </div>
     </section>

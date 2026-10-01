@@ -10,6 +10,8 @@ export interface SheetBar {
   end: number
   /** rendered chord symbols played in this bar, in order ("N.C." for no chord) */
   chords: string[]
+  /** how many beats each chord lasts, same order as `chords` */
+  lengths: number[]
   guess: boolean
 }
 
@@ -50,15 +52,19 @@ export function buildBars(timeline: Grid, segments: Segment[], opts: RenderOpts)
     const [start, end] = [bounds[i], bounds[i + 1]]
     const beats = timeline.beats.filter((b) => b >= start - 1e-6 && b < end - 1e-6)
     const chords: string[] = []
+    const lengths: number[] = []
     let guess = false
     for (const beat of beats.length ? beats : [start]) {
       const idx = activeIndex(segments, beat + 0.01)
       const seg = idx >= 0 ? segments[idx] : null
       const symbol = seg && seg.label !== 'N' ? render(seg.label, opts) : 'N.C.'
-      if (chords[chords.length - 1] !== symbol) chords.push(symbol)
+      if (chords[chords.length - 1] !== symbol) {
+        chords.push(symbol)
+        lengths.push(1)
+      } else lengths[lengths.length - 1] += 1
       if (seg && seg.label !== 'N' && isLowConfidence(seg.confidence)) guess = true
     }
-    bars.push({ index: i, start, end, chords, guess })
+    bars.push({ index: i, start, end, chords, lengths, guess })
   }
   const silent = (b: SheetBar) => b.chords.every((c) => c === 'N.C.')
   while (bars.length && silent(bars[0])) bars.shift()
