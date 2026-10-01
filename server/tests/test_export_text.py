@@ -8,10 +8,10 @@ from server.export.txt import to_txt
 
 def test_build_bars_marks_continuations(timeline):
     assert build_bars(timeline, ExportOptions()) == [
-        ["Cm7", ".", ".", "."],
-        ["F7", ".", ".", "."],
-        ["Bbmaj7", ".", "Ebmaj7", "."],
-        ["D7/F#", ".", ".", "."],
+        ["Cm7", "|", "|", "|"],
+        ["F7", "|", "|", "|"],
+        ["Bbmaj7", "|", "Ebmaj7", "|"],
+        ["D7/F#", "|", "|", "|"],
     ]
 
 
@@ -52,8 +52,8 @@ def test_missing_downbeats_fall_back_to_every_fourth_beat(timeline):
 
 
 def test_grid_lines_wrap_rows():
-    bars = [["C", "."], ["G", "."], ["Am", "."]]
-    assert grid_lines(bars, 2) == ["| C . | G . |", "| Am . |"]
+    bars = [["C", "|"], ["G", "|"], ["Am", "|"]]
+    assert grid_lines(bars, 2) == ["| C | | G | |", "| Am | |"]
 
 
 def test_chord_legend(timeline):
@@ -70,7 +70,7 @@ def test_chordpro_grid(timeline):
         "# Chords and sections were detected automatically and may contain errors.\n"
         "\n"
         "{start_of_grid}\n"
-        "| Cm7 . . . | F7 . . . | Bbmaj7 . Ebmaj7 . | D7/F# . . . |\n"
+        "| Cm7 | | | | F7 | | | | Bbmaj7 | Ebmaj7 | | D7/F# | | | |\n"
         "{end_of_grid}\n"
     )
     assert "{capo: 3}" in to_chordpro(timeline, ExportOptions(capo=3))
@@ -85,7 +85,7 @@ def test_txt(timeline):
         "Chords and sections were detected automatically and may contain errors.",
         "",
     ]
-    assert "| Cm7 . . . | F7 . . . |" in text
+    assert "| Cm7 | | | | F7 | | | |" in text
     assert text.rstrip().endswith("Chords: Cm7, F7, Bbmaj7, Ebmaj7, D7/F#")
 
 
@@ -105,7 +105,7 @@ def with_sections(timeline):
 def test_txt_groups_bars_under_section_headings(timeline):
     text = to_txt(with_sections(timeline), ExportOptions())
     assert text.index("[Intro]") < text.index("[Chorus]")
-    assert "| Cm7 . . . | F7 . . . |" in text.split("[Chorus]")[0]
+    assert "| Cm7 | | | | F7 | | | |" in text.split("[Chorus]")[0]
     assert "Bbmaj7" not in text.split("[Chorus]")[0]
     assert "may contain errors" in text
 

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from server.theory import chord as ch
 
 NO_CHORD = "N.C."
-HOLD = "."
+HOLD = "|"  # a held beat; drawn like a bar line, as the user asked
 
 
 @dataclass(frozen=True)
