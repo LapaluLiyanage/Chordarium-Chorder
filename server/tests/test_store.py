@@ -21,6 +21,14 @@ def test_job_lifecycle(store):
     assert store.get_job("missing") is None
 
 
+def test_count_active_jobs_ignores_finished_ones(store):
+    a, b = store.create_job("aaaaaaaaaaa", "fast"), store.create_job("bbbbbbbbbbb", "fast")
+    assert store.count_active_jobs() == 2
+    store.update_job(a, state="done")
+    store.update_job(b, state="cancelled")
+    assert store.count_active_jobs() == 0
+
+
 def test_update_job_rejects_unknown_fields(store):
     job_id = store.create_job("abcdefghijk", "fast")
     with pytest.raises(ValueError):

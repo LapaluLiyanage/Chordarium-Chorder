@@ -62,6 +62,18 @@ def test_analyze_refresh_reanalyzes_a_cached_song(ctx, timeline):
     assert r.status_code == 202 and store.get_active_job(VID)["id"] == r.get_json()["job_id"]
 
 
+def test_analyze_is_refused_when_the_queue_is_full(ctx, monkeypatch):
+    client, store = ctx
+    monkeypatch.setattr("server.app.MAX_ACTIVE_JOBS", 2)
+    for i in range(2):
+        assert client.post("/api/analyze", json={"url": f"https://youtu.be/aaaaaaaaaa{i}"}).status_code == 202
+    full = client.post("/api/analyze", json={"url": "https://youtu.be/bbbbbbbbbbb"})
+    assert full.status_code == 429 and "try again" in full.get_json()["error"].lower()
+    # a link that is already being analyzed still joins its running job instead of being refused
+    again = client.post("/api/analyze", json={"url": "https://youtu.be/aaaaaaaaaa0"})
+    assert again.status_code == 202
+
+
 def test_song_crud(ctx, timeline):
     client, store = ctx
     song_id = store.save_song(timeline)

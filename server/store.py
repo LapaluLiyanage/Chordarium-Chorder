@@ -101,6 +101,10 @@ class Store:
         return self._exec(f"SELECT * FROM jobs WHERE video_id = %s AND state NOT IN {FINAL_STATES} "
                           "ORDER BY created_at DESC LIMIT 1", (video_id,)).fetchone()
 
+    def count_active_jobs(self) -> int:
+        """Analyses that are waiting or running (used to cap the queue on a public deployment)."""
+        return self._exec(f"SELECT count(*) AS n FROM jobs WHERE state NOT IN {FINAL_STATES}").fetchone()["n"]
+
     def fail_interrupted_jobs(self) -> int:
         cur = self._exec("UPDATE jobs SET state = 'failed', error = 'The server restarted during analysis.' "
                          f"WHERE state NOT IN {FINAL_STATES + ('queued',)}")
