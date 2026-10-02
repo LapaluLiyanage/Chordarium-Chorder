@@ -1,0 +1,15 @@
+# A small image for the HTTP API only (about 250 MB, fits Render's free 512 MB instance).
+# The analysis worker uses Dockerfile.server, which carries PyTorch and the chord model.
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+COPY requirements-api.txt .
+RUN pip install -r requirements-api.txt
+
+COPY server ./server
+
+EXPOSE 5000
+# Render passes the port in $PORT; one worker keeps memory low on a small instance.
+CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 1 --threads 4 --timeout 120 'server.app:create_app()'"]

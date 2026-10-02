@@ -1,5 +1,6 @@
 """Chordarium HTTP API."""
 import logging
+import os
 import re
 
 from flask import Flask, Response, jsonify, request
@@ -21,6 +22,8 @@ EXPORTERS = {
     "midi": (to_midi, "audio/midi", "mid"),
 }
 MODES = ("fast", "accurate")
+# how many analyses may be waiting or running at once (protects the worker when the site is public)
+MAX_ACTIVE_JOBS = int(os.environ.get("CHORDARIUM_MAX_ACTIVE_JOBS", "8"))
 
 
 class BadRequest(Exception):
@@ -72,6 +75,8 @@ def create_app(config: dict | None = None, store: Store | None = None) -> Flask:
         active = store.get_active_job(video_id)
         if active:
             return jsonify({"job_id": active["id"]}), 202
+        if store.count_active_jobs() >= MAX_ACTIVE_JOBS:
+            return error("Lots of songs are being analyzed right now. Please try again in a few minutes.", 429)
         return jsonify({"job_id": store.create_job(video_id, mode)}), 202
 
     @app.get("/api/jobs/<job_id>")
