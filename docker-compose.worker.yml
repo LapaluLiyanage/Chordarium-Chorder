@@ -1,0 +1,28 @@
+# Runs ONLY the analysis worker on this machine, against a database that lives elsewhere (e.g. Supabase).
+# The website (Vercel) and the API (Render) are hosted; this machine does the heavy analysis from your home
+# internet connection, which YouTube trusts far more than a cloud server.
+#
+#   1. Put the connection string in .env.worker (never commit it):  DATABASE_URL=postgresql://...
+#   2. docker compose -f docker-compose.worker.yml up -d --build
+#
+# New analyses only run while this is up. Songs already analysed stay viewable either way.
+name: chordarium-worker
+
+services:
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    command: python -m server.worker
+    restart: unless-stopped
+    env_file:
+      - .env.worker
+    environment:
+      CHORDARIUM_DATA: /data
+    volumes:
+      - worker-data:/data
+      - torch-cache:/root/.cache/torch
+
+volumes:
+  worker-data:
+  torch-cache:

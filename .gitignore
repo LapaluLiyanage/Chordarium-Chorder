@@ -24,3 +24,7 @@ client/dist/
 Thumbs.db
 .vscode/
 .idea/
+
+# local secrets (the example file is tracked)
+.env.*
+!.env.example
