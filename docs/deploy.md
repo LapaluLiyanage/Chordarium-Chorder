@@ -1,4 +1,4 @@
-# Running Chordarium on a machine you control
+# Running Chordarium Chorder on a machine you control
 
 This runs the whole app (database, API, analysis worker and web client) with Docker. It is set up for **private
 use**: the web app listens on this machine only unless you change that.

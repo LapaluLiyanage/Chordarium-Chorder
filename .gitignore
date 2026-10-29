@@ -28,3 +28,8 @@ Thumbs.db
 # local secrets (the example file is tracked)
 .env.*
 !.env.example
+
+# Tooling
+.claude/
+CLAUDE.md
+*.log

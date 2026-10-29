@@ -1,53 +1,42 @@
-# Chordarium
+# Chordarium Chorder
 
 Paste a YouTube link, get the song's chords — including 7ths, extensions, sus
 chords and inversions — synced to the video, editable, and exportable as a
 chord sheet (ChordPro, PDF, TXT, MIDI, JSON).
 
-**Status:** Phase 1 complete. Backend now runs on Postgres with a
-separate worker process (no hosting yet — that's next). See
-[`docs/superpowers/specs/2026-09-27-chordarium-hosted-platform-design.md`](docs/superpowers/specs/2026-09-27-chordarium-hosted-platform-design.md).
+![Chordarium Chorder home page](docs/screenshots/home.jpg)
 
-## Run it with Docker (private use)
+![Chordarium Chorder tracker: video, current chord, section strip and beat ruler](docs/screenshots/tracker.jpg)
+
+## Features
+
+- **Any YouTube song:** paste a link and get chords in time with the video.
+- **Rich chords:** 7ths, extensions, sus chords, inversions and slash-chord bass notes.
+- **Song sections:** bar-aligned Intro, Verse, Chorus, Bridge, Interlude and Outro.
+- **Practice tools:** loop a section, slow it down, follow the beat ruler and chord wheel.
+- **Editable:** fix chords and rename or move sections in edit mode.
+- **Export:** ChordPro, PDF lead sheet, TXT, MIDI and JSON.
+- **Library:** analysed songs are kept, with favourites and progress saved in your browser.
+
+## Quick start
+
+### With Docker (private use)
 
 ```bash
 cp .env.example .env        # set POSTGRES_PASSWORD
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-Then open http://127.0.0.1:8080. It runs the database, API, worker and web client together and listens on this
-machine only. See [`docs/deploy.md`](docs/deploy.md) for backups, reaching it from other devices and troubleshooting.
+Then open http://127.0.0.1:8080. This runs the database, API, worker and web
+client together and listens on this machine only. See
+[`docs/deploy.md`](docs/deploy.md) for backups, reaching it from other devices
+and troubleshooting. For hosting options see
+[`docs/deploy-render-vercel.md`](docs/deploy-render-vercel.md) and
+[`docs/deploy-hybrid.md`](docs/deploy-hybrid.md).
 
-## Song sections and accuracy
+### For development
 
-Songs are split into bar-aligned sections (Intro, Verse, Chorus, Bridge,
-Interlude, Outro) using bar-level similarity of chroma and timbre; sections
-that sound alike are grouped, and repetition, loudness and (in Accurate mode)
-the vocal stem decide the names. Exports group bars under these headings.
-Bass notes of slash chords are drawn in their own colour (toggle in the
-controls).
-
-Everything is detected automatically and can be wrong. Quick mode has no vocal
-stem, so its section labels are weaker guesses (shown with `?`); Accurate mode
-is slower but better for bass notes and sections. Loop-based songs get rougher
-sections. Sections can be renamed or moved in edit mode, and older songs can
-be re-analyzed from the tracker page (this discards local edits).
-
-## Stack
-
-- **Server:** Flask API (request handling only), a separate worker process
-  (`server/worker.py`) for the analysis pipeline, yt-dlp + ffmpeg, Demucs
-  (stem separation), beat_this (beats), BTC transformer (large-vocabulary
-  chord recognition) with a 144-template chroma fallback, Postgres.
-- **Client:** React + Vite + TypeScript, YouTube IFrame player.
-
-## Roadmap
-
-1. **Phase 1** — local Flask + React app: analyze, synced tracker, chord
-   editor, exports.
-2. **Phase 2** — public web platform to publish and share chord sheets.
-
-## Run the server (Phase 1)
+Requires Python 3.12, Node.js, ffmpeg on PATH and a local Postgres.
 
 ```powershell
 py -3.12 -m venv .venv
@@ -56,38 +45,48 @@ pip install torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.
 pip install -r requirements.txt
 python scripts/setup_models.py      # BTC chord model (one time)
 docker compose up -d                # local Postgres on localhost:5433
-python -m pytest                    # fast tests; add -m "slow or not slow" for model tests
 $env:DATABASE_URL = "postgresql://chordarium:chordarium@localhost:5433/chordarium"
-python -m server.app                # API on http://127.0.0.1:5000
 ```
 
-Requires ffmpeg on PATH. Requires a local Postgres: `docker compose up -d`
-(or point `DATABASE_URL` at your own for the app/worker). Run the worker in
-a second terminal: `python -m server.worker`. Tests use their own dedicated
-database (`chordarium_test` on the same server, auto-created on first run)
-and never touch `DATABASE_URL` — running the suite is always safe even if
-`DATABASE_URL` points at a real dev or production database elsewhere.
+Then run three processes, each in its own terminal:
 
-## Run the app (Phase 1)
-
-Terminal 1 — API:
 ```powershell
-.venv\Scripts\activate
-$env:DATABASE_URL = "postgresql://chordarium:chordarium@localhost:5433/chordarium"
-python -m server.app
+python -m server.app        # API on http://127.0.0.1:5000
+python -m server.worker     # analysis pipeline worker
+cd client; npm install; npm run dev   # web client (Vite)
 ```
 
-Terminal 2 — worker (runs the analysis pipeline):
-```powershell
-.venv\Scripts\activate
-$env:DATABASE_URL = "postgresql://chordarium:chordarium@localhost:5433/chordarium"
-python -m server.worker
-```
+Tests: `python -m pytest` (fast tests; add `-m "slow or not slow"` for model
+tests) and `npm test` in `client/`. The Python tests use their own database
+(`chordarium_test`, created automatically) and never touch `DATABASE_URL`, so
+running them is always safe.
 
-Terminal 3 — web client:
-```powershell
-cd client
-npm install
-npm run dev          # http://localhost:5173
-npm test             # client tests
-```
+## Song sections and accuracy
+
+Songs are split into bar-aligned sections using bar-level similarity of chroma
+and timbre; sections that sound alike are grouped, and repetition, loudness and
+(in Accurate mode) the vocal stem decide the names. Exports group bars under
+these headings. Bass notes of slash chords are drawn in their own colour
+(toggle in the controls).
+
+Everything is detected automatically and can be wrong. Quick mode has no vocal
+stem, so its section labels are weaker guesses (shown with `?`); Accurate mode
+is slower but better for bass notes and sections. Loop-based songs get rougher
+sections. Sections can be renamed or moved in edit mode, and older songs can be
+re-analyzed from the tracker page (this discards local edits).
+
+## Stack
+
+- **Server:** Flask API (request handling only), a separate worker process
+  (`server/worker.py`) for the analysis pipeline, yt-dlp + ffmpeg, Demucs
+  (stem separation), beat_this (beats), BTC transformer (large-vocabulary
+  chord recognition) with a 144-template chroma fallback, Postgres. See
+  [`docs/chord-recognition-model.md`](docs/chord-recognition-model.md) for how
+  chords are recognised.
+- **Client:** React + Vite + TypeScript, YouTube IFrame player, GSAP motion.
+
+## Roadmap
+
+1. **Phase 1 (done)** — Flask + React app on Postgres with a separate worker:
+   analyze, synced tracker, chord editor, exports.
+2. **Phase 2** — public web platform to publish and share chord sheets.

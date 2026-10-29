@@ -96,7 +96,7 @@ _CHORD_RE = re.compile(rf"^({_NOTE})(.*?)(?:/({_NOTE}))?$")
 # ---------------------------------------------------------------- text helpers
 
 def _owner() -> str:
-    return os.environ.get("CHORDARIUM_PDF_OWNER", "Chordarium")
+    return os.environ.get("CHORDARIUM_PDF_OWNER", "Chordarium Chorder")
 
 
 def _safe(text: str, font: str) -> str:
@@ -233,7 +233,7 @@ def _plan(blocks, per_row: int):
 # ---------------------------------------------------------------- drawing pieces
 
 def _logo(c, x: float, top: float, size: float) -> None:
-    """The Chordarium mark. (x, top) is its top-left corner in distance-from-top terms."""
+    """The Chordarium Chorder mark. (x, top) is its top-left corner in distance-from-top terms."""
     cx, cy, r = x + size / 2, PAGE_H - top - size / 2, size / 2
     c.setFillColor(INK)
     c.circle(cx, cy, r, stroke=0, fill=1)
@@ -298,7 +298,7 @@ def _footer(c) -> None:
     c.line(MARGIN, rule_y, PAGE_W - MARGIN, rule_y)
     base = MARGIN + 1.6 * mm
     _logo(c, MARGIN, PAGE_H - (base + 3.4 * mm), 4 * mm)
-    _draw(c, MARGIN + 5.6 * mm, base, "Chordarium", F_BOLD, 8)
+    _draw(c, MARGIN + 5.6 * mm, base, "Chordarium Chorder", F_BOLD, 8)
     text = f"© {datetime.date.today().year} {_owner()}. All rights reserved."
     _draw(c, (PAGE_W - _width(text, F_REG, 8)) / 2, base, text, F_REG, 8, MUTED)
     page = f"Page {c.getPageNumber()}"

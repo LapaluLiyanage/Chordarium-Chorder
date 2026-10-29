@@ -12,7 +12,7 @@ x-server: &server
   environment:
     DATABASE_URL: postgresql://chordarium:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/chordarium
     CHORDARIUM_DATA: /data
-    CHORDARIUM_PDF_OWNER: ${CHORDARIUM_PDF_OWNER:-Chordarium}
+    CHORDARIUM_PDF_OWNER: ${CHORDARIUM_PDF_OWNER:-Chordarium Chorder}
   volumes:
     - chordarium-data:/data
     - torch-cache:/root/.cache/torch

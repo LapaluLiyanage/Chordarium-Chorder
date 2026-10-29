@@ -16,7 +16,7 @@ export function SiteNav({ variant = 'bar' }: { variant?: 'hero' | 'bar' }) {
   }
   return (
     <nav className="site-nav bar-nav" aria-label="Main">
-      <Link to="/" className="nav-home"><Logo size={22} />CHORDARIUM</Link>
+      <Link to="/" className="nav-home"><Logo size={22} />CHORDARIUM CHORDER</Link>
       <Link to="/#library">LIBRARY</Link>
     </nav>
   )

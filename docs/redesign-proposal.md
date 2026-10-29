@@ -1,4 +1,4 @@
-# Chordarium — Web App Redesign Proposal
+# Chordarium Chorder — Web App Redesign Proposal
 
 *Draft v1 · 2026-10-02 · a proposal for review, nothing in here is built yet unless marked **Shipped**.*
 
@@ -18,7 +18,7 @@
 
 ## 1. Summary
 
-Chordarium turns a YouTube link into a synced, editable chord sheet. The engine
+Chordarium Chorder turns a YouTube link into a synced, editable chord sheet. The engine
 is solid. The **app around it grew screen-by-screen** and now shows it: the
 song page is one long scroll with two banners above the video, the chord
 timeline clips short chords, the library is a flat list, and the app never
@@ -116,7 +116,7 @@ These are observations from using the current build, not opinions about the code
 ## 5. Information architecture
 
 ```
-Chordarium
+Chordarium Chorder
 ├── Library            /                    ← home: analyze + browse
 │   ├── Analyze bar (paste link, Quick/Accurate)
 │   ├── Continue practising (recent, with progress)
@@ -144,7 +144,7 @@ Chordarium
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│ ◉ Chordarium     Library                      ⚙  ☾         │
+│ ◉ Chordarium Chorder     Library                      ⚙  ☾         │
 ├────────────────────────────────────────────────────────────┤
 │  Paste a song. Play along with its chords.                  │
 │  ┌──────────────────────────────────────────┐ [ Analyze ]   │
@@ -362,7 +362,7 @@ My suggestions, grouped by how much they change the product. None are committed.
 ### 8.5 Product & community
 - **Public profiles + "verified by community" badge** once accounts exist.
 - **Request a song** board — see what's popular and pre-analyse it.
-- **Browser extension:** a "Chords" button on YouTube watch pages that opens the song in Chordarium.
+- **Browser extension:** a "Chords" button on YouTube watch pages that opens the song in Chordarium Chorder.
 - **Mobile apps** (wrap the PWA first; native only if needed for audio latency or offline).
 
 ---

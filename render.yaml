@@ -23,7 +23,7 @@ services:
           name: chordarium-db
           property: connectionString
       - key: CHORDARIUM_PDF_OWNER
-        value: Chordarium
+        value: Chordarium Chorder
 
   # The analysis worker: downloads audio and runs the models, so it needs real memory.
   # standard (2 GB) is enough for Quick mode; Accurate mode (stem separation) needs pro (4 GB+).
