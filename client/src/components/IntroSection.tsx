@@ -36,7 +36,7 @@ export function IntroSection({ timeline, clock }: { timeline: Timeline; clock: D
         <div className="eyebrow-light">HOW IT WORKS</div>
         <h2 className="mega">EVERY SONG HAS A SHAPE.</h2>
         <p>
-          Chordarium listens, finds each chord, and keeps it in time with the video. The wheel shows the chord playing
+          Chorder listens, finds each chord, and keeps it in time with the video. The wheel shows the chord playing
           right now — its notes lit up on the circle of fifths. Drag it around; tap a note to hear it.
         </p>
         <div className="intro-actions">
