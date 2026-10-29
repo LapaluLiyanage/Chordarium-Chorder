@@ -88,10 +88,19 @@ export const Hero = memo(function Hero({ busy, error, onAnalyze, onSample }: Pro
     <div id="top" className="hero-panel" ref={root}>
       <SiteNav variant="hero" />
       <div className="hero-rule"><span>PASTE A SONG</span><i /><span>PLAY ALONG</span></div>
-      <h1 className="wordmark" aria-label="Chordarium">
-        {'CHORDARIUM'.split('').map((l, i) => (
-          <span key={i} className="wordmark-letter" aria-hidden="true" style={{ animationDelay: `${i * 55}ms` }}>{l}</span>
-        ))}
+      <h1 className="wordmark" aria-label="Chordarium Chorder">
+        <span className="wordmark-stack" aria-hidden="true">
+          <span className="wordmark-main">
+            {'CHORDARIUM'.split('').map((l, i) => (
+              <span key={i} className="wordmark-letter" style={{ animationDelay: `${i * 55}ms` }}>{l}</span>
+            ))}
+          </span>
+          <span className="wordmark-sub">
+            {'CHORDER'.split('').map((l, i) => (
+              <span key={i} className="wordmark-letter" style={{ animationDelay: `${(i + 10) * 55}ms` }}>{l}</span>
+            ))}
+          </span>
+        </span>
       </h1>
       <div className="hero-grid">
         <p className="hero-side">Chords for any YouTube song, in time with the video.</p>

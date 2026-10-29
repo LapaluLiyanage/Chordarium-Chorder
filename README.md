@@ -1,6 +1,6 @@
-# Chordarium
+# Chordarium Chorder
 
-Paste a YouTube link, get the song's chords — including 7ths, extensions, sus
+Part of the Chordarium family of music tools. Paste a YouTube link, get the song's chords — including 7ths, extensions, sus
 chords and inversions — synced to the video, editable, and exportable as a
 chord sheet (ChordPro, PDF, TXT, MIDI, JSON).
 

@@ -1,4 +1,4 @@
-"""Chordarium HTTP API."""
+"""Chordarium Chorder HTTP API."""
 import logging
 import os
 import re

@@ -108,6 +108,9 @@ h1, h2 { margin: 0; }
 .hero-rule i { flex: 1; height: 2px; background: var(--ink); }
 .wordmark { margin: clamp(4px, 1vw, 14px) 0 0; padding-top: 18px; overflow: hidden; font-weight: 900; font-stretch: 62%; font-variation-settings: 'wdth' 62; font-size: clamp(52px, 16.4vw, 300px); line-height: .86; letter-spacing: -.01em; text-align: center; white-space: nowrap; }
 .wordmark-letter { display: inline-block; }
+.wordmark-stack { display: inline-block; }
+.wordmark-main, .wordmark-sub { display: block; }
+.wordmark-sub { font-size: .4em; line-height: 1; margin-top: .1em; text-align: right; letter-spacing: .04em; }
 .hero-grid { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 24px; margin-top: clamp(20px, 3vw, 40px); }
 .hero-side { flex: 1 1 180px; max-width: 220px; margin: 0; font-size: 12px; font-weight: 700; line-height: 1.4; letter-spacing: .02em; }
 .hero-side.right { text-align: right; }

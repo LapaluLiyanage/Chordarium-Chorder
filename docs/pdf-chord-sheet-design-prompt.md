@@ -1,10 +1,10 @@
-# Prompt: design the Chordarium PDF chord sheet
+# Prompt: design the Chordarium Chorder PDF chord sheet
 
 Copy everything below the line into your design tool or AI assistant.
 
 ---
 
-Design a printable **A4 PDF chord sheet** for Chordarium, an app that turns a YouTube song into synced chords.
+Design a printable **A4 PDF chord sheet** for Chordarium Chorder, an app that turns a YouTube song into synced chords.
 The sheet is for a musician reading it on a music stand or printed page, so **clarity at arm's length beats decoration**.
 
 ## What the page must show
@@ -13,7 +13,7 @@ The sheet is for a musician reading it on a music stand or printed page, so **cl
 3. **Bars** laid out in a grid of 4 per row (the user can switch to 2 or 8). **Each bar is its own box**; the gap between boxes is the bar line.
 4. **Chords inside a bar:** a bar can hold 1 to 4 chords. Give each chord space in proportion to how many beats it lasts (4/4: a chord for 2 beats gets half the bar), separated by a thin dashed divider. Draw a small beat ruler (one tick per beat) along the bottom edge of the box.
 5. **Slash chords** like D7/F#: the chord in dark ink, the bass note (/F#) in teal so the bass is easy to spot.
-6. **Footer** on every page: "Chordarium" left, "Page n" right.
+6. **Footer** on every page: "Chordarium Chorder" left, "Page n" right.
 7. **Chord legend** on the last page: each chord used and its notes (e.g. "Cm7: C Eb G Bb").
 
 ## Hard requirements

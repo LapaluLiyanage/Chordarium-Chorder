@@ -1,4 +1,4 @@
-/** The Chordarium mark: a "C" ring with three beat dots. Colours follow the surrounding text. */
+/** The Chordarium Chorder mark: a "C" ring with three stacked chord notes. Colours follow the surrounding text. */
 export function Logo({ size = 24 }: { size?: number }) {
   return (
     <svg className="logo" width={size} height={size} viewBox="0 0 100 100" aria-hidden="true" focusable="false">
