@@ -40,6 +40,7 @@ export const Hero = memo(function Hero({ busy, error, onAnalyze, onUpload, onSam
     ensureGsap()
     const ctx = gsap.context(() => {
       gsap.from('.wordmark-letter', { yPercent: 115, duration: 1, ease: 'power4.out', stagger: 0.055 })
+      gsap.from('.wordmark-tag', { x: 40, opacity: 0, duration: 0.8, delay: 0.6, ease: 'power3.out' })
       gsap.from('.hero-form', { y: 30, opacity: 0, duration: 0.8, delay: 0.5, ease: 'power3.out' })
       gsap.from('.notch-logo', { scale: 0, rotation: -180, duration: 1, delay: 0.4, ease: 'back.out(1.6)' })
       gsap.fromTo('.url-pill', { boxShadow: '0 0 0 0 rgba(35,29,23,.5), 0 14px 34px -14px rgba(35,29,23,.7)' },
@@ -105,8 +106,9 @@ export const Hero = memo(function Hero({ busy, error, onAnalyze, onUpload, onSam
       <SiteNav variant="hero" />
       <div className="hero-rule"><span>PASTE A SONG</span><i /><span>PLAY ALONG</span></div>
       <h1 className="wordmark" aria-label="Chordarium Chorder">
-        {'CHORDARIUM CHORDER'.split('').map((l, i) => (
-          <span key={i} className="wordmark-letter" aria-hidden="true" style={{ animationDelay: `${i * 55}ms` }}>{l === ' ' ? ' ' : l}</span>
+        <span className="wordmark-tag" aria-hidden="true">CHORDER</span>
+        {'CHORDARIUM'.split('').map((l, i) => (
+          <span key={i} className="wordmark-letter" aria-hidden="true" style={{ animationDelay: `${i * 55}ms` }}>{l}</span>
         ))}
       </h1>
       <div className="hero-grid">
