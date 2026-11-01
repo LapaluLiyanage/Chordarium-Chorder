@@ -50,13 +50,15 @@ export interface PlayerControls {
   pause(): void
 }
 
-export function useYouTubePlayer(elementId: string, videoId: string): PlayerControls {
+/** pass a null videoId to leave the player off (songs from an uploaded file play through <audio>) */
+export function useYouTubePlayer(elementId: string, videoId: string | null): PlayerControls {
   const playerRef = useRef<YTPlayer | null>(null)
   const [ready, setReady] = useState(false)
   const [time, setTime] = useState(0)
   const [playing, setPlaying] = useState(false)
 
   useEffect(() => {
+    if (!videoId) return
     let cancelled = false
     let frame = 0
     let last = -1

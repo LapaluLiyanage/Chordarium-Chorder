@@ -1,4 +1,4 @@
-"""YouTube video id -> chord timeline, reporting progress along the way."""
+"""YouTube video id (or uploaded file id) -> chord timeline, reporting progress along the way."""
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
@@ -32,7 +32,7 @@ def analyze(video_id: str, work_dir: Path, options: Options, progress: ProgressF
     work_dir.mkdir(parents=True, exist_ok=True)
     warnings: list[str] = []
 
-    progress("downloading", 5, "Downloading audio")
+    progress("downloading", 5, "Preparing your file" if ingest.is_upload_id(video_id) else "Downloading audio")
     meta, wav = fetch_audio(video_id, work_dir)
     y, _ = librosa.load(str(wav), sr=SR, mono=True)
     harmonic_y, bass_y, harmonic_path, separated = y, y, wav, False

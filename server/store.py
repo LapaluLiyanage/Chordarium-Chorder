@@ -36,6 +36,23 @@ SCHEMA = (
         created_at TEXT NOT NULL
     )
     """,
+    # an uploaded file waiting for the worker; the API and worker share only the database
+    """
+    CREATE TABLE IF NOT EXISTS uploads (
+        video_id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        data BYTEA NOT NULL,
+        created_at TEXT NOT NULL
+    )
+    """,
+    # playback audio for songs that came from an uploaded file (they have no YouTube video)
+    """
+    CREATE TABLE IF NOT EXISTS song_audio (
+        video_id TEXT PRIMARY KEY,
+        mimetype TEXT NOT NULL,
+        data BYTEA NOT NULL
+    )
+    """,
 )
 JOB_FIELDS = {"state", "progress", "message", "error", "song_id"}
 FINAL_STATES = ("done", "failed", "cancelled")
@@ -133,6 +150,31 @@ class Store:
             return True
         return self.get_job(job_id) is not None
 
+    # ---- uploaded files ----
+    def save_upload(self, video_id: str, title: str, data: bytes) -> None:
+        self._exec("INSERT INTO uploads (video_id, title, data, created_at) VALUES (%s, %s, %s, %s) "
+                   "ON CONFLICT (video_id) DO UPDATE SET title = EXCLUDED.title, data = EXCLUDED.data",
+                   (video_id, title, data, _now()))
+
+    def get_upload(self, video_id: str) -> dict | None:
+        return self._exec("SELECT * FROM uploads WHERE video_id = %s", (video_id,)).fetchone()
+
+    def delete_upload(self, video_id: str) -> None:
+        self._exec("DELETE FROM uploads WHERE video_id = %s", (video_id,))
+
+    def save_audio(self, video_id: str, mimetype: str, data: bytes) -> None:
+        self._exec("INSERT INTO song_audio (video_id, mimetype, data) VALUES (%s, %s, %s) "
+                   "ON CONFLICT (video_id) DO UPDATE SET mimetype = EXCLUDED.mimetype, data = EXCLUDED.data",
+                   (video_id, mimetype, data))
+
+    def get_audio(self, video_id: str) -> dict | None:
+        return self._exec("SELECT * FROM song_audio WHERE video_id = %s", (video_id,)).fetchone()
+
+    def has_audio_source(self, video_id: str) -> bool:
+        """Whether an uploaded song can be (re-)analyzed: its upload is waiting or its playback audio is kept."""
+        return self._exec("SELECT 1 FROM uploads WHERE video_id = %s UNION ALL "
+                          "SELECT 1 FROM song_audio WHERE video_id = %s LIMIT 1", (video_id, video_id)).fetchone() is not None
+
     # ---- songs ----
     def save_song(self, timeline: dict) -> str:
         meta = (timeline["title"], timeline["duration"], timeline["key"], timeline["tempo"])
@@ -171,4 +213,8 @@ class Store:
         return [self._song(r, with_timeline=False) for r in rows]
 
     def delete_song(self, song_id: str) -> bool:
-        return self._exec("DELETE FROM songs WHERE id = %s", (song_id,)).rowcount > 0
+        row = self._exec("DELETE FROM songs WHERE id = %s RETURNING video_id", (song_id,)).fetchone()
+        if row is None:
+            return False
+        self._exec("DELETE FROM song_audio WHERE video_id = %s", (row["video_id"],))
+        return True

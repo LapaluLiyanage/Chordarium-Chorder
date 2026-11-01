@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState, type FormEvent } from 'react'
+import { memo, useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react'
 import { ensureGsap, gsap, motionOK } from '../motion'
 import { Logo } from './Logo'
 import { SiteNav } from './SiteNav'
@@ -10,6 +10,8 @@ interface Props {
   error: string | null
   /** called with the pasted link and chosen mode */
   onAnalyze(url: string, mode: Mode): void
+  /** called with an audio file the user picked or dropped */
+  onUpload(file: File, mode: Mode): void
   /** opens a song that is already in the library; omit when there is none */
   onSample?: () => void
 }
@@ -20,10 +22,14 @@ const STATUS: Record<Mode, string> = {
 }
 
 const YOUTUBE = /youtu\.?be/i
+// ffmpeg on the server converts whatever comes in, so accept any audio or video file
+const ACCEPT = 'audio/*,video/*,.mp3,.wav,.m4a,.aac,.flac,.ogg,.oga,.opus,.wma,.aiff,.aif,.webm,.mp4,.mov,.mkv'
 
-export const Hero = memo(function Hero({ busy, error, onAnalyze, onSample }: Props) {
+export const Hero = memo(function Hero({ busy, error, onAnalyze, onUpload, onSample }: Props) {
   const [url, setUrl] = useState('')
   const [mode, setMode] = useState<Mode>('fast')
+  const [dragging, setDragging] = useState(false)
+  const fileInput = useRef<HTMLInputElement>(null)
   const root = useRef<HTMLDivElement>(null)
   const queue = useRef<HTMLDivElement>(null)
 
@@ -84,6 +90,16 @@ export const Hero = memo(function Hero({ busy, error, onAnalyze, onSample }: Pro
     if (url.trim()) onAnalyze(url.trim(), mode)
   }
 
+  function pickFile(file: File | undefined) {
+    if (file && !busy) onUpload(file, mode)
+  }
+
+  function onDrop(e: DragEvent) {
+    e.preventDefault()
+    setDragging(false)
+    pickFile(e.dataTransfer.files[0])
+  }
+
   return (
     <div id="top" className="hero-panel" ref={root}>
       <SiteNav variant="hero" />
@@ -99,11 +115,19 @@ export const Hero = memo(function Hero({ busy, error, onAnalyze, onSample }: Pro
           <label htmlFor="yt" className="hero-step">
             <span className="step-num">1</span>START HERE — PASTE A YOUTUBE LINK<span className="step-arrow">↓</span>
           </label>
-          <div className="url-pill">
+          <div className={dragging ? 'url-pill dragging' : 'url-pill'}
+            onDragOver={(e) => { e.preventDefault(); setDragging(true) }} onDragLeave={() => setDragging(false)} onDrop={onDrop}>
             <span className="yt-badge" aria-hidden="true">▶</span>
             <input id="yt" type="text" inputMode="url" autoComplete="off" placeholder="https://www.youtube.com/watch?v=…"
               value={url} onChange={(e) => setUrl(e.target.value)} />
             <button type="submit" className="go-btn" data-mag="1" disabled={busy || !url.trim()}>{busy ? 'STARTING…' : 'GET CHORDS →'}</button>
+          </div>
+          <div className="hero-sub">
+            <span>Or use your own song:</span>
+            <button type="button" className="upload-btn" disabled={busy} onClick={() => fileInput.current?.click()}>UPLOAD MP3 / AUDIO FILE</button>
+            <input ref={fileInput} type="file" accept={ACCEPT} hidden aria-label="Upload an audio file"
+              onChange={(e) => { pickFile(e.target.files?.[0]); e.target.value = '' }} />
+            <span>· or drop it on the link box</span>
           </div>
           <div className="hero-sub">
             {onSample && <><span>No link handy?</span><button type="button" className="link-btn" onClick={onSample}>Try a sample song</button></>}

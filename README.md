@@ -1,7 +1,7 @@
 # Chordarium Chorder
 
-Paste a YouTube link, get the song's chords — including 7ths, extensions, sus
-chords and inversions — synced to the video, editable, and exportable as a
+Paste a YouTube link or upload an audio file, get the song's chords — including 7ths, extensions, sus
+chords and inversions — synced to the music, editable, and exportable as a
 chord sheet (ChordPro, PDF, TXT, MIDI, JSON).
 
 ![Chordarium Chorder home page](docs/screenshots/home.jpg)
@@ -11,6 +11,7 @@ chord sheet (ChordPro, PDF, TXT, MIDI, JSON).
 ## Features
 
 - **Any YouTube song:** paste a link and get chords in time with the video.
+- **Your own files:** upload an MP3 (or WAV, M4A, FLAC, OGG, even a video file, up to 40 MB / 15 min); the server converts it and plays it back with the chords.
 - **Rich chords:** 7ths, extensions, sus chords, inversions and slash-chord bass notes.
 - **Song sections:** bar-aligned Intro, Verse, Chorus, Bridge, Interlude and Outro.
 - **Practice tools:** loop a section, slow it down, follow the beat ruler and chord wheel.

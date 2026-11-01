@@ -11,11 +11,33 @@ import time
 from pathlib import Path
 
 from server.engine import pipeline
+from server.engine import ingest
 from server.engine.ingest import IngestError
 from server.store import Store
 
 log = logging.getLogger(__name__)
 POLL_INTERVAL_SECONDS = 2.0
+
+
+def upload_fetcher(store: Store):
+    """fetch_audio for songs from an uploaded file: the waiting upload, or the kept playback audio on re-analysis."""
+    def fetch(video_id: str, out_dir: Path) -> tuple[dict, Path]:
+        upload = store.get_upload(video_id)
+        if upload:
+            title, data = upload["title"], upload["data"]
+        else:
+            audio, song = store.get_audio(video_id), store.get_song_by_video(video_id)
+            if audio is None:
+                raise IngestError("The uploaded file is no longer available. Please upload it again.")
+            title, data = (song["title"] if song else "Uploaded song"), audio["data"]
+        out_dir.mkdir(parents=True, exist_ok=True)
+        source = out_dir / "source"
+        source.write_bytes(data)
+        wav, mp3 = ingest.convert_file(source, out_dir)
+        store.save_audio(video_id, ingest.PLAYBACK_MIMETYPE, mp3.read_bytes())
+        store.delete_upload(video_id)
+        return {"title": title}, wav
+    return fetch
 
 
 def run_once(store: Store, work_root: Path, analyze_fn=pipeline.analyze, keep_audio: bool = False) -> bool:
@@ -32,7 +54,8 @@ def run_once(store: Store, work_root: Path, analyze_fn=pipeline.analyze, keep_au
         store.update_job(job_id, state=state, progress=percent, message=message)
 
     try:
-        timeline = analyze_fn(video_id, work_dir, pipeline.Options(mode=mode), progress)
+        extra = {"fetch_audio": upload_fetcher(store)} if ingest.is_upload_id(video_id) else {}
+        timeline = analyze_fn(video_id, work_dir, pipeline.Options(mode=mode), progress, **extra)
         if store.get_job(job_id)["cancel_requested"]:
             raise pipeline.Cancelled()
         song_id = store.save_song(timeline)

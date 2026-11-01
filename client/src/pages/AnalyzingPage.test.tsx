@@ -59,7 +59,7 @@ describe('AnalyzingPage', () => {
     const calls = mocked.job.mock.calls.length
     await new Promise((r) => setTimeout(r, 40))
     expect(mocked.job.mock.calls.length).toBe(calls)
-    expect(screen.getByRole('link', { name: /try another link/i })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: /try another song/i })).toHaveAttribute('href', '/')
   })
 
   it('cancels the job', async () => {

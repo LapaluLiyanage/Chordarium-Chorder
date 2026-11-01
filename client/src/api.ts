@@ -36,6 +36,16 @@ export type AnalyzeResponse = { job_id?: string; song_id?: string; cached?: bool
 export const api = {
   analyze: (url: string, mode: 'fast' | 'accurate', refresh = false) =>
     request<AnalyzeResponse>('/analyze', { method: 'POST', body: JSON.stringify(refresh ? { url, mode, refresh } : { url, mode }) }),
+  /** any audio or video file; the server converts it, so the format doesn't matter */
+  upload: async (file: File, mode: 'fast' | 'accurate'): Promise<AnalyzeResponse> => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('mode', mode)
+    const res = await fetch('/api/upload', { method: 'POST', body: form })
+    if (!res.ok) throw await toApiError(res)
+    return res.json() as Promise<AnalyzeResponse>
+  },
+  songAudioUrl: (songId: string) => `/api/songs/${songId}/audio`,
   job: (id: string) => request<Job>(`/jobs/${id}`),
   cancelJob: (id: string) => request<{ cancelled: boolean }>(`/jobs/${id}/cancel`, { method: 'POST' }),
   songs: () => request<SongSummary[]>('/songs'),

@@ -4,6 +4,11 @@ const TINTS = ['#f2913d', '#6aa8e0', '#b48be0', '#6fbf8b', '#ee8577', '#f2c14e']
 const TONICS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 const NOISE = /\s*[([][^)\]]*(official|video|audio|lyrics?|remaster|4k|hd|mv|music)[^)\]]*[)\]]/gi
 
+/** songs analyzed from an uploaded audio file have an id like "file-0123456789abcdef" instead of a YouTube id */
+export function isUploadId(videoId: string): boolean {
+  return /^file-[0-9a-f]{16}$/.test(videoId)
+}
+
 /** "Artist - Song (Official Video)" -> { artist, title }; falls back to the whole title. */
 export function splitTitle(raw: string): { title: string; artist: string | null } {
   const cleaned = raw.replace(NOISE, '').replace(/\s*\|.*$/, '').trim() || raw.trim()

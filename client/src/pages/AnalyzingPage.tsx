@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, ApiError } from '../api'
 import { SiteNav } from '../components/SiteNav'
+import { isUploadId } from '../lib/songMeta'
 import type { Job, JobState } from '../types'
 
 const STEPS: [JobState, string][] = [
@@ -54,7 +55,10 @@ export function AnalyzingPage({ pollMs = 1000 }: { pollMs?: number }) {
     }
   }, [jobId, pollMs, navigate])
 
-  const steps = STEPS.filter(([s]) => s !== 'separating' || job?.mode === 'accurate')
+  const upload = job !== null && isUploadId(job.video_id)
+  const steps = STEPS
+    .filter(([s]) => s !== 'separating' || job?.mode === 'accurate')
+    .map(([s, label]): [JobState, string] => [s, upload && s === 'downloading' ? 'Converting your file' : label])
   const current = job ? steps.findIndex(([s]) => s === job.state) : -1
   const status = (i: number) => (job?.state === 'done' || i < current ? 'done' : i === current ? 'active' : 'pending')
   const finished = job !== null && FINAL.includes(job.state)
@@ -65,7 +69,7 @@ export function AnalyzingPage({ pollMs = 1000 }: { pollMs?: number }) {
     <main className="page">
       <p className="eyebrow">Analyzing</p>
       <h1>Listening to your song…</h1>
-      {job && (
+      {job && !upload && (
         <img src={`https://i.ytimg.com/vi/${job.video_id}/mqdefault.jpg`} alt="" width={320}
           style={{ borderRadius: 16, maxWidth: '100%' }} />
       )}
@@ -84,7 +88,7 @@ export function AnalyzingPage({ pollMs = 1000 }: { pollMs?: number }) {
       {job?.state === 'failed' && <p role="alert" className="error">{job.error ?? 'Analysis failed.'}</p>}
       {job?.state === 'cancelled' && <p>Analysis cancelled.</p>}
       {error && <p role="alert" className="error">{error}</p>}
-      {(finished || error) && job?.state !== 'done' && <p><Link to="/" className="button">Try another link</Link></p>}
+      {(finished || error) && job?.state !== 'done' && <p><Link to="/" className="button">Try another song</Link></p>}
     </main>
     </>
   )

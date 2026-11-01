@@ -192,3 +192,55 @@ def test_create_app_never_marks_jobs_failed_on_startup(store, tmp_path):
     store.update_job(job_id, state="beats")
     create_app({"DATA_DIR": tmp_path, "TESTING": True}, store=store)
     assert store.get_job(job_id)["state"] == "beats"
+
+
+def test_upload_starts_job_then_reuses_cached_song(ctx, timeline):
+    import io
+    from server.engine.ingest import upload_id
+    client, store = ctx
+    r = client.post("/api/upload", data={"mode": "accurate", "file": (io.BytesIO(b"song bytes"), "My_Tune.mp3")},
+                    content_type="multipart/form-data")
+    assert r.status_code == 202
+    job = store.get_job(r.get_json()["job_id"])
+    vid = upload_id(b"song bytes")
+    assert (job["video_id"], job["mode"]) == (vid, "accurate")
+    assert store.get_upload(vid)["title"] == "My Tune"
+
+    timeline["video_id"] = vid
+    song_id = store.save_song(timeline)
+    store.save_audio(vid, "audio/mpeg", b"0123456789")
+    r = client.post("/api/upload", data={"file": (io.BytesIO(b"song bytes"), "again.mp3")},
+                    content_type="multipart/form-data")
+    assert r.get_json() == {"song_id": song_id, "cached": True}
+
+    # playback audio supports seeking
+    r = client.get(f"/api/songs/{song_id}/audio", headers={"Range": "bytes=2-4"})
+    assert r.status_code == 206 and r.data == b"234" and r.mimetype == "audio/mpeg"
+
+    # re-analysis by id, then deleting the song drops its audio
+    r = client.post("/api/analyze", json={"url": vid, "mode": "fast", "refresh": True})
+    assert r.status_code == 202
+    assert client.delete(f"/api/songs/{song_id}").status_code == 204
+    assert store.get_audio(vid) is None
+
+
+def test_upload_validates_input(ctx):
+    import io
+    client, store = ctx
+    assert client.post("/api/upload", data={}, content_type="multipart/form-data").status_code == 400
+    empty = client.post("/api/upload", data={"file": (io.BytesIO(b""), "a.mp3")}, content_type="multipart/form-data")
+    assert empty.status_code == 400
+    bad_mode = client.post("/api/upload", data={"mode": "x", "file": (io.BytesIO(b"x"), "a.mp3")},
+                           content_type="multipart/form-data")
+    assert bad_mode.status_code == 400
+    gone = client.post("/api/analyze", json={"url": "file-0123456789abcdef", "refresh": True})
+    assert gone.status_code == 400
+    assert client.get("/api/songs/nope/audio").status_code == 404
+
+
+def test_upload_too_large_is_a_friendly_error(store, tmp_path):
+    import io
+    client = create_app({"TESTING": True, "MAX_CONTENT_LENGTH": 1000}, store=store).test_client()
+    r = client.post("/api/upload", data={"file": (io.BytesIO(b"x" * 5000), "big.mp3")},
+                    content_type="multipart/form-data")
+    assert r.status_code == 413 and "too big" in r.get_json()["error"]

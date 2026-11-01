@@ -39,17 +39,19 @@ export function HomePage() {
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView?.()
   }, [hash, songs])
 
-  const analyze = useCallback(async (url: string, mode: 'fast' | 'accurate') => {
+  const start = useCallback(async (request: () => ReturnType<typeof api.analyze>) => {
     setBusy(true)
     setError(null)
     try {
-      const r = await api.analyze(url, mode)
+      const r = await request()
       navigate(r.song_id ? `/songs/${r.song_id}` : `/jobs/${r.job_id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setBusy(false)
     }
   }, [navigate])
+  const analyze = useCallback((url: string, mode: 'fast' | 'accurate') => start(() => api.analyze(url, mode)), [start])
+  const upload = useCallback((file: File, mode: 'fast' | 'accurate') => start(() => api.upload(file, mode)), [start])
 
   const sheet = useMemo(
     () => buildSheet(DEMO_TIMELINE, DEMO_TIMELINE.segments, DEMO_TIMELINE.sections ?? [],
@@ -66,7 +68,7 @@ export function HomePage() {
 
   return (
     <main className="home">
-      <Hero busy={busy} error={error} onAnalyze={analyze} onSample={sampleId ? openSample : undefined} />
+      <Hero busy={busy} error={error} onAnalyze={analyze} onUpload={upload} onSample={sampleId ? openSample : undefined} />
       <IntroSection timeline={DEMO_TIMELINE} clock={clock} />
       <div className="rule-line" />
       <div className="steps-bar"><span>① PASTE A LINK</span><span>② WE FIND THE CHORDS</span><span>③ YOU PLAY ALONG</span></div>

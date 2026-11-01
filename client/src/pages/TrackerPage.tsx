@@ -17,8 +17,9 @@ import { useChordOverrides } from '../hooks/useChordOverrides'
 import { saveProgress } from '../hooks/useLibraryStore'
 import { useSectionEdits } from '../hooks/useSectionEdits'
 import { RATES, useViewSettings } from '../hooks/useViewSettings'
+import { useAudioPlayer } from '../hooks/useAudioPlayer'
 import { useYouTubePlayer } from '../hooks/useYouTubePlayer'
-import { splitTitle } from '../lib/songMeta'
+import { isUploadId, splitTitle } from '../lib/songMeta'
 import { sectionAt } from '../sections'
 import { barAt, buildSheet } from '../sheet'
 import { activeIndex } from '../sync'
@@ -70,7 +71,10 @@ function Tracker({ song }: { song: Song }) {
   const [segments, applyOverride, resetOverrides] = useChordOverrides(song.id, t.segments)
   const detectedSections = useMemo(() => t.sections ?? [], [t.sections])
   const [sections, editSectionAt, resetSections] = useSectionEdits(song.id, detectedSections)
-  const player = useYouTubePlayer('yt-player', t.video_id)
+  const uploaded = isUploadId(t.video_id)
+  const youtube = useYouTubePlayer('yt-player', uploaded ? null : t.video_id)
+  const audio = useAudioPlayer('audio-player', uploaded ? api.songAudioUrl(song.id) : null)
+  const player = uploaded ? audio : youtube
   const [loop, setLoop] = useState<AbLoop>({ a: null, b: null })
   const [editMode, setEditMode] = useState(false)
   const [editing, setEditing] = useState<number | null>(null)
@@ -197,7 +201,7 @@ function Tracker({ song }: { song: Song }) {
   async function reanalyze(mode: 'fast' | 'accurate') {
     setReanalyzing(true)
     try {
-      const r = await api.analyze(`https://www.youtube.com/watch?v=${t.video_id}`, mode, true)
+      const r = await api.analyze(uploaded ? t.video_id : `https://www.youtube.com/watch?v=${t.video_id}`, mode, true)
       resetOverrides()
       resetSections()
       navigate(r.job_id ? `/jobs/${r.job_id}` : `/songs/${r.song_id}`)
@@ -245,7 +249,17 @@ function Tracker({ song }: { song: Song }) {
 
         <section id="play" className="stage dark-surface" aria-label="Play along workspace">
           <div className="stage-grid">
-            <div className="player"><div id="yt-player" /></div>
+            {uploaded ? (
+              <div className="player audio-mode">
+                <div className="audio-card">
+                  <span className="audio-badge">UPLOADED FILE</span>
+                  <p className="audio-title">{title}</p>
+                  <audio id="audio-player" src={api.songAudioUrl(song.id)} controls preload="metadata" />
+                </div>
+              </div>
+            ) : (
+              <div className="player"><div id="yt-player" /></div>
+            )}
             <PlayPanel title={(artist ? `${artist} · ` : '') + title} meta={`${formatKey(t.key, settings.transpose)} · ${Math.round(t.tempo)} BPM`}
               badge={t.engine.separated ? 'ACCURATE' : 'QUICK'} segments={segments} symbols={symbols} sections={sections}
               beats={t.beats} duration={t.duration} time={time} loop={loopRange} countdown={countdown} onSeek={seek}

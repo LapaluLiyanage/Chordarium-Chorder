@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderAt } from '../test/router'
 import { HomePage } from './HomePage'
 
-vi.mock('../api', () => ({ api: { analyze: vi.fn(), songs: vi.fn() } }))
+vi.mock('../api', () => ({ api: { analyze: vi.fn(), upload: vi.fn(), songs: vi.fn() } }))
 // a still demo clock keeps these tests fast and deterministic
 vi.mock('../hooks/useDemoClock', () => ({ useDemoClock: () => ({ time: 0, playing: true, toggle: vi.fn(), seek: vi.fn() }) }))
 import { api } from '../api'
@@ -51,6 +51,16 @@ describe('HomePage hero', () => {
     await user.click(screen.getByRole('button', { name: /get chords/i }))
     expect(mocked.analyze).toHaveBeenCalledWith('https://youtu.be/dQw4w9WgXcQ', 'accurate')
     expect(await screen.findByText('SONG PAGE')).toBeInTheDocument()
+  })
+
+  it('uploads an audio file and opens the job page', async () => {
+    mocked.upload.mockResolvedValue({ job_id: 'j2' })
+    const user = userEvent.setup()
+    renderHome()
+    const file = new File(['abc'], 'my-song.mp3', { type: 'audio/mpeg' })
+    await user.upload(screen.getByLabelText(/upload an audio file/i), file)
+    expect(mocked.upload).toHaveBeenCalledWith(file, 'fast')
+    expect(await screen.findByText('JOB PAGE')).toBeInTheDocument()
   })
 
   it('shows the server error message', async () => {

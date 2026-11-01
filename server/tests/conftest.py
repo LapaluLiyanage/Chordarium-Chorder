@@ -25,7 +25,7 @@ def _test_database():
 @pytest.fixture
 def store():
     with psycopg.connect(TEST_DSN, autocommit=True) as conn:
-        conn.execute("DROP TABLE IF EXISTS songs, jobs")
+        conn.execute("DROP TABLE IF EXISTS songs, jobs, uploads, song_audio")
     s = Store(TEST_DSN)
     yield s
     s.close()

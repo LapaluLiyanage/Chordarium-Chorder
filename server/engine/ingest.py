@@ -1,4 +1,5 @@
-"""YouTube link -> mono 22.05 kHz WAV via yt-dlp + ffmpeg."""
+"""YouTube link or uploaded audio file -> mono 22.05 kHz WAV via yt-dlp + ffmpeg."""
+import hashlib
 import logging
 import re
 import subprocess
@@ -14,6 +15,10 @@ MAX_DURATION = 900
 SAMPLE_RATE = 22050
 _ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
 _YT_HOSTS = {"youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com"}
+# songs from an uploaded file are keyed by a hash of its bytes, so the same file is only analyzed once
+UPLOAD_PREFIX = "file-"
+_UPLOAD_ID_RE = re.compile(r"^file-[0-9a-f]{16}$")
+PLAYBACK_MIMETYPE = "audio/mpeg"
 
 
 class IngestError(Exception):
@@ -38,6 +43,20 @@ def parse_video_id(url: str) -> str | None:
         elif len(parts) >= 2 and parts[0] in ("shorts", "embed", "live"):
             candidate = parts[1]
     return candidate if candidate and _ID_RE.match(candidate) else None
+
+
+def upload_id(data: bytes) -> str:
+    return UPLOAD_PREFIX + hashlib.sha256(data).hexdigest()[:16]
+
+
+def is_upload_id(value: str) -> bool:
+    return bool(_UPLOAD_ID_RE.match(value))
+
+
+def title_from_filename(filename: str) -> str:
+    stem = Path(filename.replace("\\", "/")).stem
+    title = re.sub(r"\s+", " ", re.sub(r"_+", " ", stem)).strip()
+    return title[:200] or "Uploaded song"
 
 
 def _watch_url(video_id: str) -> str:
@@ -92,3 +111,26 @@ def download_wav(video_id: str, out_dir: Path) -> Path:
 def fetch_audio(video_id: str, out_dir: Path) -> tuple[dict, Path]:
     meta = probe(video_id)
     return meta, download_wav(video_id, out_dir)
+
+
+def convert_file(source: Path, out_dir: Path) -> tuple[Path, Path]:
+    """Any audio or video file ffmpeg can read -> (analysis WAV, MP3 for playback)."""
+    import soundfile as sf  # worker-only dependency; the lean API image imports this module too
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    wav, mp3 = out_dir / "audio.wav", out_dir / "playback.mp3"
+    try:
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(source), "-vn",
+                        "-ac", "1", "-ar", str(SAMPLE_RATE), str(wav)], check=True, capture_output=True)
+    except subprocess.CalledProcessError as e:
+        log.warning("ffmpeg could not read the upload: %s", e.stderr.decode(errors="replace")[-400:])
+        raise IngestError("Couldn't read this file. Try an MP3, WAV, M4A, FLAC or OGG file.") from e
+    duration = sf.info(str(wav)).duration
+    if duration > MAX_DURATION:
+        raise IngestError(f"This file is {int(duration // 60)} min long; the limit is 15 min.")
+    if duration < 5:
+        raise IngestError("This file is too short to find chords in.")
+    if source.resolve() != mp3.resolve():
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(source), "-vn",
+                        "-codec:a", "libmp3lame", "-b:a", "192k", str(mp3)], check=True, capture_output=True)
+    return wav, mp3
