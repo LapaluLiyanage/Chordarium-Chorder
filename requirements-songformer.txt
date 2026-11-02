@@ -1,0 +1,10 @@
+# Extra packages for the SongFormer structure model (Accurate mode). Optional: without them the app
+# names sections with the simpler repetition-based detector.
+# Install on top of requirements.txt:  pip install -r requirements-songformer.txt
+# then fetch the weights (about 2.7 GB):  python scripts/setup_models.py --songformer
+transformers<5
+huggingface_hub<1
+x-transformers
+muq
+ema-pytorch
+loguru

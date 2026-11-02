@@ -27,7 +27,7 @@ def test_fast_template_pipeline(tmp_path, monkeypatch):
     assert states == ["downloading", "beats", "chords", "bass", "key"]
     assert t["video_id"] == "vid00000001" and t["title"] == "Fixture Song"
     assert t["tempo"] == 120.0 and t["time_signature"] == 4
-    assert t["engine"] == {"chords": "template", "separated": False, "version": "1"}
+    assert t["engine"] == {"chords": "template", "separated": False, "version": "1", "structure": "repetition"}
     assert t["warnings"] == []
     assert label_at(t["segments"], 2.0) == "C:maj"
     assert label_at(t["segments"], 6.0) == "G:maj/3"

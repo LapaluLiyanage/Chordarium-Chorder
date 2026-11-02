@@ -47,6 +47,9 @@ py -3.12 -m venv .venv
 pip install torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
 python scripts/setup_models.py      # BTC chord model (one time)
+# optional, for better sections in Accurate mode (about 2.7 GB):
+#   pip install -r requirements-songformer.txt
+#   python scripts/setup_models.py --songformer
 docker compose up -d                # local Postgres on localhost:5433
 $env:DATABASE_URL = "postgresql://chordarium:chordarium@localhost:5433/chordarium"
 ```
@@ -66,17 +69,23 @@ running them is always safe.
 
 ## Song sections and accuracy
 
-Songs are split into bar-aligned sections using bar-level similarity of chroma
-and timbre; sections that sound alike are grouped, and repetition, loudness and
-(in Accurate mode) the vocal stem decide the names. Exports group bars under
-these headings. Bass notes of slash chords are drawn in their own colour
+In **Accurate** mode the sections come from [SongFormer](https://huggingface.co/ASLP-lab/SongFormer),
+a pre-trained music structure model (CC BY 4.0) that labels intro, verse,
+pre-chorus, chorus, bridge, interlude and outro; its boundaries are snapped to
+bars. It needs the extra packages and weights above (the Docker setup includes
+them; set `WITH_SONGFORMER: "0"` in the compose file to skip the ~3 GB). Without
+it, and in **Quick** mode, songs are split into bar-aligned sections using
+bar-level similarity of chroma and timbre; sections that sound alike are
+grouped, and repetition, loudness and (when there is a vocal stem) the vocals
+decide the names. Exports group bars under these headings. Bass notes of slash chords are drawn in their own colour
 (toggle in the controls).
 
 Everything is detected automatically and can be wrong. Quick mode has no vocal
 stem, so its section labels are weaker guesses (shown with `?`); Accurate mode
 is slower but better for bass notes and sections. Loop-based songs get rougher
-sections. Sections can be renamed or moved in edit mode, and older songs can be
-re-analyzed from the tracker page (this discards local edits).
+sections. Turn on **Edit sheet** to fix any bar (one chord, or split it in two)
+and to rename, move, add or delete sections; older songs can be re-analyzed from
+the tracker page (this discards local edits).
 
 ## Stack
 

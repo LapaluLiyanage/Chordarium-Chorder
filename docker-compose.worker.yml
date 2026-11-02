@@ -13,6 +13,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.server
+      args:
+        WITH_SONGFORMER: "1"   # the section model for Accurate mode; set to "0" to skip the ~3 GB
     command: python -m server.worker
     restart: unless-stopped
     env_file:

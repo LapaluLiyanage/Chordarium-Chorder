@@ -14,7 +14,7 @@ export function ReanalyzeBar({ hasSections, separated, busy, onReanalyze }: Prop
   const message = missing
     ? 'This song was analyzed before section labels (Intro, Verse, Chorus) existed.'
     : 'This was a quick analysis. Accurate mode finds bass notes and song sections more reliably.'
-  const action = missing ? 'Detect sections' : 'Re-run in accurate mode (~3 min)'
+  const action = missing ? 'Detect sections' : 'Re-run in accurate mode (~12 min)'
   return (
     <div role="status" aria-label="Improve this analysis" className="banner">
       <p>{message}</p>

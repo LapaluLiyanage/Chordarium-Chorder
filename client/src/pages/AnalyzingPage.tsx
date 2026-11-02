@@ -12,6 +12,7 @@ const STEPS: [JobState, string][] = [
   ['chords', 'Recognizing chords'],
   ['bass', 'Detecting bass notes and inversions'],
   ['key', 'Estimating key'],
+  ['structure', 'Finding intro, verses and choruses'],
 ]
 const FINAL: JobState[] = ['done', 'failed', 'cancelled']
 const MAX_CONSECUTIVE_FAILURES = 3
@@ -57,7 +58,7 @@ export function AnalyzingPage({ pollMs = 1000 }: { pollMs?: number }) {
 
   const upload = job !== null && isUploadId(job.video_id)
   const steps = STEPS
-    .filter(([s]) => s !== 'separating' || job?.mode === 'accurate')
+    .filter(([s]) => (s !== 'separating' && s !== 'structure') || job?.mode === 'accurate')
     .map(([s, label]): [JobState, string] => [s, upload && s === 'downloading' ? 'Converting your file' : label])
   const current = job ? steps.findIndex(([s]) => s === job.state) : -1
   const status = (i: number) => (job?.state === 'done' || i < current ? 'done' : i === current ? 'active' : 'pending')

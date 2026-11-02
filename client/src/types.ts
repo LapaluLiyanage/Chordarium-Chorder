@@ -28,7 +28,8 @@ export interface Timeline {
   segments: Segment[]
   /** absent on songs analysed before section detection existed */
   sections?: Section[]
-  engine: { chords: string; separated: boolean; version: string }
+  /** `structure` says which method found the sections (absent on older songs) */
+  engine: { chords: string; separated: boolean; version: string; structure?: 'songformer' | 'repetition' }
   warnings: string[]
 }
 
@@ -50,7 +51,7 @@ export interface Song extends SongSummary {
 }
 
 export type JobState =
-  | 'queued' | 'downloading' | 'separating' | 'beats' | 'chords' | 'bass' | 'key'
+  | 'queued' | 'downloading' | 'separating' | 'beats' | 'chords' | 'bass' | 'key' | 'structure'
   | 'done' | 'failed' | 'cancelled'
 
 export interface Job {

@@ -23,7 +23,13 @@ COPY scripts ./scripts
 COPY shared ./shared
 
 # BTC chord model (code + pretrained weights). Without it the app falls back to the simpler template recognizer.
-RUN python scripts/setup_models.py
+# WITH_SONGFORMER=1 also adds the SongFormer structure model for Accurate mode (about 3 GB more).
+ARG WITH_SONGFORMER=0
+COPY requirements-songformer.txt .
+RUN if [ "$WITH_SONGFORMER" = "1" ]; then \
+        pip install -r requirements-songformer.txt torch==2.5.1 torchaudio==2.5.1 \
+        && python scripts/setup_models.py --songformer; \
+    else python scripts/setup_models.py; fi
 
 EXPOSE 5000
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "server.app:create_app()"]

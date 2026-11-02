@@ -18,7 +18,7 @@ interface Props {
 
 const STATUS: Record<Mode, string> = {
   fast: 'Quick is great for a first look',
-  accurate: 'Accurate takes about 3 minutes and finds bass notes and sections better',
+  accurate: 'Accurate takes about 12 minutes and finds bass notes, intros, verses and choruses much better',
 }
 
 const YOUTUBE = /youtu\.?be/i
@@ -66,7 +66,7 @@ export const Hero = memo(function Hero({ busy, error, onAnalyze, onUpload, onSam
   // a bar that fills over the expected analysis time while the request is being sent
   useEffect(() => {
     if (busy && queue.current && motionOK()) {
-      gsap.fromTo(queue.current, { scaleX: 0 }, { scaleX: 1, duration: mode === 'fast' ? 30 : 180, ease: 'none' })
+      gsap.fromTo(queue.current, { scaleX: 0 }, { scaleX: 1, duration: mode === 'fast' ? 30 : 720, ease: 'none' })
     }
   }, [busy, mode])
 
@@ -138,7 +138,7 @@ export const Hero = memo(function Hero({ busy, error, onAnalyze, onUpload, onSam
           <div className="hero-mode">
             <div className="segmented light" role="radiogroup" aria-label="Analysis mode">
               <button type="button" role="radio" aria-checked={mode === 'fast'} onClick={() => setMode('fast')}>QUICK ~30S</button>
-              <button type="button" role="radio" aria-checked={mode === 'accurate'} onClick={() => setMode('accurate')}>ACCURATE ~3 MIN</button>
+              <button type="button" role="radio" aria-checked={mode === 'accurate'} onClick={() => setMode('accurate')}>ACCURATE ~12 MIN</button>
             </div>
             <span>{STATUS[mode]}</span>
           </div>

@@ -1,4 +1,5 @@
 """YouTube video id (or uploaded file id) -> chord timeline, reporting progress along the way."""
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
@@ -6,9 +7,10 @@ from typing import Callable
 import librosa
 import soundfile as sf
 
-from server.engine import bass, beats, chords_btc, chords_tmpl, ingest, key, sections, separate, snap
+from server.engine import bass, beats, chords_btc, chords_tmpl, ingest, key, sections, separate, snap, structure
 from server.engine.chords_btc import DEFAULT_WEIGHTS_DIR
 
+log = logging.getLogger(__name__)
 SR = 22050
 ENGINE_VERSION = "1"
 ProgressFn = Callable[[str, int, str], None]
@@ -71,11 +73,24 @@ def analyze(video_id: str, work_dir: Path, options: Options, progress: ProgressF
     key_label = key.estimate_key(harmonic_y, SR)
 
     duration = round(len(y) / SR, 3)
-    try:
-        song_sections = sections.detect_sections(y, SR, beat_info["downbeats"], duration, vocal_y)
-    except Exception as e:  # structure is a bonus: never lose the chords because of it
-        song_sections = []
-        warnings.append(f"Could not detect song sections: {e}")
+    song_sections: list[dict] = []
+    structure_engine = "repetition"
+    if options.mode == "accurate" and structure.is_available(options.weights_dir):
+        progress("structure", 94, "Finding intro, verses and choruses (the slow part)")
+        try:
+            parts = structure.predict(wav, options.weights_dir)
+            song_sections = structure.to_sections(parts, beat_info["downbeats"], duration)
+            structure_engine = "songformer"
+        except Exception as e:  # the model is a bonus: fall back to the repetition-based detector
+            log.warning("SongFormer failed: %s", e)
+            warnings.append("The section model could not run, so a simpler method named the sections.")
+    if not song_sections:
+        structure_engine = "repetition"
+        try:
+            song_sections = sections.detect_sections(y, SR, beat_info["downbeats"], duration, vocal_y)
+        except Exception as e:  # structure is a bonus: never lose the chords because of it
+            song_sections = []
+            warnings.append(f"Could not detect song sections: {e}")
 
     return {
         "video_id": video_id,
@@ -88,6 +103,7 @@ def analyze(video_id: str, work_dir: Path, options: Options, progress: ProgressF
         "downbeats": beat_info["downbeats"],
         "segments": segments,
         "sections": song_sections,
-        "engine": {"chords": engine_name, "separated": separated, "version": ENGINE_VERSION},
+        "engine": {"chords": engine_name, "separated": separated, "version": ENGINE_VERSION,
+                   "structure": structure_engine},
         "warnings": warnings,
     }
