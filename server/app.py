@@ -27,6 +27,9 @@ MODES = ("fast", "accurate")
 # how many analyses may be waiting or running at once (protects the worker when the site is public)
 MAX_ACTIVE_JOBS = int(os.environ.get("CHORDARIUM_MAX_ACTIVE_JOBS", "8"))
 MAX_UPLOAD_MB = int(os.environ.get("CHORDARIUM_MAX_UPLOAD_MB", "40"))
+# websites allowed to call this API straight from the browser (the hosted site does, to skip the Vercel proxy)
+CORS_ORIGINS = {o.strip() for o in os.environ.get(
+    "CHORDARIUM_CORS_ORIGINS", "https://chordariumchorder.lapalu.me,https://chordarium.vercel.app").split(",") if o.strip()}
 
 
 class BadRequest(Exception):
@@ -59,6 +62,18 @@ def create_app(config: dict | None = None, store: Store | None = None) -> Flask:
 
     def error(message: str, status: int):
         return jsonify({"error": message}), status
+
+    @app.after_request
+    def _cors(response):
+        origin = request.headers.get("Origin")
+        if origin and origin in CORS_ORIGINS:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, DELETE, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+            response.headers["Access-Control-Expose-Headers"] = "Content-Disposition, Content-Range, Accept-Ranges"
+            response.headers["Access-Control-Max-Age"] = "86400"
+            response.headers.add("Vary", "Origin")
+        return response
 
     @app.errorhandler(BadRequest)
     def _bad_request(e):

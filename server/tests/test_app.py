@@ -244,3 +244,22 @@ def test_upload_too_large_is_a_friendly_error(store, tmp_path):
     r = client.post("/api/upload", data={"file": (io.BytesIO(b"x" * 5000), "big.mp3")},
                     content_type="multipart/form-data")
     assert r.status_code == 413 and "too big" in r.get_json()["error"]
+
+
+def test_cors_allows_the_hosted_site_only(ctx):
+    client, _ = ctx
+    site = "https://chordariumchorder.lapalu.me"
+    pre = client.options("/api/analyze", headers={"Origin": site, "Access-Control-Request-Method": "POST",
+                                                  "Access-Control-Request-Headers": "content-type"})
+    assert pre.status_code == 200
+    assert pre.headers["Access-Control-Allow-Origin"] == site
+    assert "POST" in pre.headers["Access-Control-Allow-Methods"]
+    assert "Content-Type" in pre.headers["Access-Control-Allow-Headers"]
+    got = client.get("/api/songs", headers={"Origin": site})
+    assert got.headers["Access-Control-Allow-Origin"] == site and "Origin" in got.headers["Vary"]
+    # an unknown website gets no permission, and requests without an Origin are untouched
+    assert "Access-Control-Allow-Origin" not in client.get("/api/songs", headers={"Origin": "https://evil.example"}).headers
+    assert "Access-Control-Allow-Origin" not in client.get("/api/songs").headers
+    # errors carry the header too, so the page can read the message
+    bad = client.post("/api/analyze", json={"url": "x"}, headers={"Origin": site})
+    assert bad.status_code == 400 and bad.headers["Access-Control-Allow-Origin"] == site
