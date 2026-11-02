@@ -1,5 +1,7 @@
 # Chordarium Chorder
 
+**Live: [chordariumchorder.lapalu.me](https://chordariumchorder.lapalu.me)**
+
 Paste a YouTube link or upload an audio file, get the song's chords — including 7ths, extensions, sus
 chords and inversions — synced to the music, editable, and exportable as a
 chord sheet (ChordPro, PDF, TXT, MIDI, JSON).
