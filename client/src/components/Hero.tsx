@@ -8,6 +8,8 @@ type Mode = 'fast' | 'accurate'
 interface Props {
   busy: boolean
   error: string | null
+  /** shown while the server is waking up */
+  waking?: boolean
   /** called with the pasted link and chosen mode */
   onAnalyze(url: string, mode: Mode): void
   /** called with an audio file the user picked or dropped */
@@ -25,7 +27,7 @@ const YOUTUBE = /youtu\.?be/i
 // ffmpeg on the server converts whatever comes in, so accept any audio or video file
 const ACCEPT = 'audio/*,video/*,.mp3,.wav,.m4a,.aac,.flac,.ogg,.oga,.opus,.wma,.aiff,.aif,.webm,.mp4,.mov,.mkv'
 
-export const Hero = memo(function Hero({ busy, error, onAnalyze, onUpload, onSample }: Props) {
+export const Hero = memo(function Hero({ busy, error, waking, onAnalyze, onUpload, onSample }: Props) {
   const [url, setUrl] = useState('')
   const [mode, setMode] = useState<Mode>('fast')
   const [dragging, setDragging] = useState(false)
@@ -143,6 +145,7 @@ export const Hero = memo(function Hero({ busy, error, onAnalyze, onUpload, onSam
             <span>{STATUS[mode]}</span>
           </div>
           {busy && <div className="queue-bar" aria-hidden="true"><div ref={queue} /></div>}
+          {waking && !error && <p role="status" className="hero-status">The server was asleep and is waking up. This can take up to a minute, please wait.</p>}
           {error && <p role="alert" className="hero-error">{error}</p>}
         </form>
         <p className="hero-side right">Loop a verse. Slow it down. Print the sheet.</p>

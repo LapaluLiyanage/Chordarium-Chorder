@@ -131,6 +131,7 @@ h1, h2 { margin: 0; }
 .url-pill.dragging { outline: 3px dashed var(--ink); outline-offset: 4px; }
 .link-btn { border: 0; background: transparent; padding: 6px 0; font: 800 13px var(--font); text-decoration: underline; text-underline-offset: 3px; }
 .hero-mode { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; font-size: 11px; font-weight: 800; letter-spacing: .04em; }
+.hero-status { margin: 0; padding: 10px 14px; border-radius: 12px; background: rgba(35, 29, 23, .12); font-weight: 700; font-size: 13px; }
 .hero-error { margin: 0; padding: 10px 14px; border-radius: 12px; background: var(--ink); color: var(--cream); font-weight: 700; }
 .hero-notch { position: absolute; bottom: -78px; left: 50%; margin-left: -78px; width: 156px; height: 156px; }
 .notch-disc { position: absolute; inset: 0; border-radius: 50%; background: var(--amber); display: grid; place-items: center; }

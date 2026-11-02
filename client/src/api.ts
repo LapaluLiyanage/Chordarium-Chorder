@@ -21,8 +21,34 @@ async function toApiError(res: Response): Promise<ApiError> {
   return new ApiError(message, res.status)
 }
 
+/** The free API host sleeps when idle; while it wakes (up to a minute) its gateway answers with these. */
+const WAKING_STATUSES = [429, 502, 503, 504]
+export const WAKE_RETRY_MS = [3000, 5000, 8000, 12000, 15000, 20000]
+const wakeListeners = new Set<(waking: boolean) => void>()
+
+/** Be told when requests are waiting for the server to wake up (true) and when that is over (false). */
+export function onWaking(listener: (waking: boolean) => void): () => void {
+  wakeListeners.add(listener)
+  return () => { wakeListeners.delete(listener) }
+}
+
+const isGatewayReply = (res: Response) =>
+  WAKING_STATUSES.includes(res.status) && !(res.headers.get('Content-Type') ?? '').includes('application/json')
+
+/** fetch, but a "server is waking up" reply (not one of the app's own JSON errors) is retried for about a minute. */
+async function apiFetch(input: string, init?: RequestInit): Promise<Response> {
+  let res = await fetch(input, init)
+  for (let attempt = 0; isGatewayReply(res) && attempt < WAKE_RETRY_MS.length; attempt++) {
+    wakeListeners.forEach((l) => l(true))
+    await new Promise((resolve) => setTimeout(resolve, WAKE_RETRY_MS[attempt]))
+    res = await fetch(input, init)
+  }
+  wakeListeners.forEach((l) => l(false))
+  return res
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`/api${path}`, {
+  const res = await apiFetch(`/api${path}`, {
     ...init,
     headers: { 'Content-Type': 'application/json', ...(init.headers ?? {}) },
   })
@@ -41,7 +67,7 @@ export const api = {
     const form = new FormData()
     form.append('file', file)
     form.append('mode', mode)
-    const res = await fetch('/api/upload', { method: 'POST', body: form })
+    const res = await apiFetch('/api/upload', { method: 'POST', body: form })
     if (!res.ok) throw await toApiError(res)
     return res.json() as Promise<AnalyzeResponse>
   },
@@ -59,7 +85,7 @@ export const api = {
       simplify: req.simplify ? '1' : '0',
       bars_per_row: String(req.barsPerRow),
     })
-    const res = await fetch(`/api/songs/${songId}/export?${params.toString()}`, {
+    const res = await apiFetch(`/api/songs/${songId}/export?${params.toString()}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ timeline }),

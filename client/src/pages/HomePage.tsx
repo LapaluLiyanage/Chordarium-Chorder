@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { api } from '../api'
+import { api, onWaking } from '../api'
 import { Hero } from '../components/Hero'
 import { IntroSection } from '../components/IntroSection'
 import { LibrarySection } from '../components/LibrarySection'
@@ -20,6 +20,7 @@ export function HomePage() {
   const navigate = useNavigate()
   const { hash } = useLocation()
   const [busy, setBusy] = useState(false)
+  const [waking, setWaking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [songs, setSongs] = useState<SongSummary[] | null>(null)
   const [favourites, toggleFavourite] = useFavourites()
@@ -30,6 +31,8 @@ export function HomePage() {
   const [perRow, setPerRow] = useState(4)
   const [simplify, setSimplify] = useState(false)
   const clock = useDemoClock(DEMO_TIMELINE.duration, loop)
+
+  useEffect(() => onWaking(setWaking), [])
 
   useEffect(() => {
     api.songs().then(setSongs).catch(() => setSongs([]))
@@ -68,7 +71,7 @@ export function HomePage() {
 
   return (
     <main className="home">
-      <Hero busy={busy} error={error} onAnalyze={analyze} onUpload={upload} onSample={sampleId ? openSample : undefined} />
+      <Hero busy={busy} error={error} waking={waking} onAnalyze={analyze} onUpload={upload} onSample={sampleId ? openSample : undefined} />
       <IntroSection timeline={DEMO_TIMELINE} clock={clock} />
       <div className="rule-line" />
       <div className="steps-bar"><span>① PASTE A LINK</span><span>② WE FIND THE CHORDS</span><span>③ YOU PLAY ALONG</span></div>

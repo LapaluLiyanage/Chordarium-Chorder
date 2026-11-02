@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderAt } from '../test/router'
 import { HomePage } from './HomePage'
 
-vi.mock('../api', () => ({ api: { analyze: vi.fn(), upload: vi.fn(), songs: vi.fn() } }))
+vi.mock('../api', () => ({ api: { analyze: vi.fn(), upload: vi.fn(), songs: vi.fn() }, onWaking: () => () => {} }))
 // a still demo clock keeps these tests fast and deterministic
 vi.mock('../hooks/useDemoClock', () => ({ useDemoClock: () => ({ time: 0, playing: true, toggle: vi.fn(), seek: vi.fn() }) }))
 import { api } from '../api'

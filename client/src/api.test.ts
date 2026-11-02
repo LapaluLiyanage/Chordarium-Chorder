@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { api, ApiError, slugTitle } from './api'
+import { api, ApiError, onWaking, slugTitle } from './api'
 
 function reply(status: number, body?: unknown) {
   return new Response(body === undefined ? null : JSON.stringify(body), {
@@ -7,7 +7,10 @@ function reply(status: number, body?: unknown) {
   })
 }
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.useRealTimers()
+})
 
 describe('api', () => {
   it('posts analyze requests as JSON', async () => {
@@ -61,5 +64,45 @@ describe('slugTitle', () => {
   it('falls back to a default for an empty or all-punctuation title', () => {
     expect(slugTitle('')).toBe('chordarium')
     expect(slugTitle('!!!')).toBe('chordarium')
+  })
+})
+
+describe('waking server', () => {
+  const gateway = (status = 429) => new Response('Too Many Requests', { status, headers: { 'Content-Type': 'text/plain' } })
+
+  it('retries a gateway reply until the server answers, and says so while it waits', async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(gateway(429))
+      .mockResolvedValueOnce(gateway(502))
+      .mockResolvedValueOnce(reply(200, []))
+    vi.stubGlobal('fetch', fetchMock)
+    const seen: boolean[] = []
+    const stop = onWaking((w) => seen.push(w))
+    const pending = api.songs()
+    await vi.advanceTimersByTimeAsync(20000)
+    await expect(pending).resolves.toEqual([])
+    stop()
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(seen[0]).toBe(true)
+    expect(seen[seen.length - 1]).toBe(false)
+  })
+
+  it("does not retry the app's own JSON errors, such as a full queue", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(reply(429, { error: 'Lots of songs are being analyzed right now.' }))
+    vi.stubGlobal('fetch', fetchMock)
+    const err = await api.analyze('https://youtu.be/x', 'fast').catch((e) => e)
+    expect(err.message).toBe('Lots of songs are being analyzed right now.')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('gives up with the status after the last retry', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => gateway(429)))
+    const pending = api.songs().catch((e) => e)
+    await vi.advanceTimersByTimeAsync(120000)
+    const err = await pending
+    expect(err).toBeInstanceOf(ApiError)
+    expect(err.status).toBe(429)
   })
 })

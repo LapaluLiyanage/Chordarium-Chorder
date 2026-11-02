@@ -3,7 +3,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { expect, it, vi } from 'vitest'
 import { AppRoutes } from './App'
 
-vi.mock('./api', () => ({ api: { analyze: vi.fn(), songs: vi.fn().mockResolvedValue([]) } }))
+vi.mock('./api', () => ({ api: { analyze: vi.fn(), songs: vi.fn().mockResolvedValue([]) }, onWaking: () => () => {} }))
 
 it('renders the wordmark and the paste field at /', async () => {
   render(<MemoryRouter initialEntries={['/']}><AppRoutes /></MemoryRouter>)
