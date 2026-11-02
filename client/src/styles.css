@@ -326,7 +326,23 @@ h1, h2 { margin: 0; }
 .audio-card { display: flex; flex-direction: column; justify-content: center; gap: 14px; padding: 24px; color: var(--on-dark); }
 .audio-badge { align-self: flex-start; padding: 4px 10px; border-radius: 999px; background: var(--amber); color: var(--ink); font-size: 11px; font-weight: 900; letter-spacing: .06em; }
 .audio-title { margin: 0; font-size: clamp(1.3rem, 3vw, 2rem); font-weight: 900; overflow-wrap: anywhere; }
-.audio-card audio { width: 100%; }
+.audio-artist { margin: 6px 0 0; color: var(--muted-dark); font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.deck { display: flex; align-items: center; gap: 12px; padding: 10px 16px 10px 10px; border-radius: 999px; background: var(--dark); border: 2px solid var(--dark-line); }
+.deck-play { flex: none; width: 48px; height: 48px; border: 0; border-radius: 50%; background: var(--amber); color: var(--ink); display: grid; place-items: center; cursor: pointer; transition: transform .15s ease; }
+.deck-play:hover { transform: scale(1.06); }
+.deck-play svg { width: 22px; height: 22px; fill: currentColor; }
+.deck-time { flex: none; min-width: 34px; font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--muted-dark); }
+.deck-mute { flex: none; width: 34px; height: 34px; border: 0; border-radius: 50%; background: transparent; color: var(--on-dark); display: grid; place-items: center; cursor: pointer; }
+.deck-mute:hover { background: var(--dark-line); }
+.deck-mute svg { width: 20px; height: 20px; fill: currentColor; stroke: currentColor; }
+.deck-range { -webkit-appearance: none; appearance: none; height: 6px; margin: 0; border-radius: 999px; cursor: pointer;
+  background: linear-gradient(to right, var(--amber) var(--p, 0%), var(--dark-line) var(--p, 0%)); }
+.deck-seek { flex: 1; min-width: 60px; }
+.deck-volume { flex: none; width: 72px; }
+.deck-range::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--on-dark); border: 0; box-shadow: 0 0 0 3px var(--amber); }
+.deck-range::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--on-dark); border: 0; box-shadow: 0 0 0 3px var(--amber); }
+.deck-range:focus-visible { outline: 2px solid var(--amber); outline-offset: 4px; }
+@media (max-width: 520px) { .deck-volume, .deck-time:last-of-type { display: none; } .deck { gap: 8px; } }
 .stage .play-panel { background: var(--dark-2); }
 .stage .structure-block { color: var(--on-dark); }
 .lane { position: relative; height: 96px; overflow: hidden; background: var(--dark-2); border-radius: 16px; }

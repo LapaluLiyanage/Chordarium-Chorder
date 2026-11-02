@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { click } from '../audio'
 import { AccuracyNotice } from '../components/AccuracyNotice'
+import { AudioDeck } from '../components/AudioDeck'
 import { ChordEditor } from '../components/ChordEditor'
 import { ChordLane } from '../components/ChordLane'
 import { Controls, type LoopRange as AbLoop } from '../components/Controls'
@@ -251,11 +252,8 @@ function Tracker({ song }: { song: Song }) {
           <div className="stage-grid">
             {uploaded ? (
               <div className="player audio-mode">
-                <div className="audio-card">
-                  <span className="audio-badge">UPLOADED FILE</span>
-                  <p className="audio-title">{title}</p>
-                  <audio id="audio-player" src={api.songAudioUrl(song.id)} controls preload="metadata" />
-                </div>
+                <AudioDeck audioId="audio-player" src={api.songAudioUrl(song.id)} title={title} artist={artist}
+                  time={time} duration={t.duration} playing={playing} onToggle={togglePlayback} onSeek={seek} />
               </div>
             ) : (
               <div className="player"><div id="yt-player" /></div>
