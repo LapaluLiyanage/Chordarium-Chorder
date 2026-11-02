@@ -23,7 +23,7 @@ interface Props {
   onSeekBar(bar: SheetBar): void
   loop: LoopRange | null
   onLoop(section: SheetSectionData): void
-  /** editing the sheet: omit on demos. Bars open the bar editor instead of seeking. */
+  /** editing the sheet: omit on demos. Bars still seek; the EDIT BAR button opens the editor for the bar being played. */
   editMode?: boolean
   onToggleEdit?(): void
   onEditBar?(bar: SheetBar): void
@@ -43,6 +43,7 @@ function fit(bar: SheetBar): string {
 
 /** The whole song as a bar grid grouped by section, synced to playback. */
 export const SheetSection = memo(function SheetSection(p: Props) {
+  const playingBar = p.sections.flatMap((s) => s.bars).find((b) => b.index === p.currentBar)
   return (
     <section id={p.id} className="sheet" data-reveal="1" aria-label="Chord sheet">
       <div className="sheet-top"><span>003</span><span>CHORD SHEET</span><span>{p.label ?? 'SYNCED'}</span></div>
@@ -67,6 +68,12 @@ export const SheetSection = memo(function SheetSection(p: Props) {
           {p.onToggleEdit && (
             <button type="button" className="pill-btn" aria-pressed={p.editMode} onClick={p.onToggleEdit}>EDIT SHEET</button>
           )}
+          {p.editMode && p.onEditBar && (
+            <button type="button" className="pill-btn amber" disabled={!playingBar}
+              onClick={() => playingBar && p.onEditBar?.(playingBar)}>
+              {playingBar ? `EDIT BAR ${playingBar.index + 1}` : 'EDIT BAR'}
+            </button>
+          )}
         </div>
       </div>
       <div className="sheet-body">
@@ -89,9 +96,9 @@ export const SheetSection = memo(function SheetSection(p: Props) {
               {chunk(sec.bars, p.perRow).map((row, ri) => (
                 <div key={ri} className="sheet-row" data-per-row={p.perRow} style={{ gridTemplateColumns: `repeat(${p.perRow}, minmax(0, 1fr))` }}>
                   {row.map((bar) => (
-                    <button key={bar.index} type="button" aria-label={`${p.editMode ? 'Edit bar' : 'Bar'} ${bar.index + 1}: ${bar.chords.join(' ')}${bar.guess ? ' (guess)' : ''}`}
+                    <button key={bar.index} type="button" aria-label={`Bar ${bar.index + 1}: ${bar.chords.join(' ')}${bar.guess ? ' (guess)' : ''}`}
                       className={['bar-cell', fit(bar), p.currentBar === bar.index ? 'now' : '', bar.guess ? 'guess' : '', p.editMode ? 'editing' : ''].join(' ').trim()}
-                      onClick={() => (p.editMode && p.onEditBar ? p.onEditBar(bar) : p.onSeekBar(bar))}>
+                      onClick={() => p.onSeekBar(bar)}>
                       <span className="bar-chords">
                         {bar.chords.map((c, i) => (
                           <span key={i} className="bar-chord" style={{ flexGrow: bar.lengths[i] }}><ChordSymbol symbol={c} /></span>
@@ -110,7 +117,7 @@ export const SheetSection = memo(function SheetSection(p: Props) {
       </div>
       <div className="sheet-foot">
         <span>{p.editMode
-          ? 'Editing: tap a bar to change its chords or split it, tap EDIT on a section to rename or move it.'
+          ? 'Editing: tap a bar to jump there and listen, then press EDIT BAR to change its chords or split it. Tap EDIT on a section to rename or move it.'
           : <>Dashed with a <b>?</b> means it’s a guess — listen, then tap to fix. Tap a section tag to loop it.</>}</span>
         {p.footer}
       </div>
