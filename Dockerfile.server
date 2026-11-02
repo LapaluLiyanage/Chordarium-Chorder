@@ -18,18 +18,23 @@ RUN pip install torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pyto
 COPY requirements.txt .
 RUN pip install -r requirements.txt gunicorn
 
+# The big model download comes before the app code so a code change does not fetch 2.7 GB again.
+# WITH_SONGFORMER=1 adds the SongFormer structure model for Accurate mode (about 3 GB more).
+ARG WITH_SONGFORMER=0
+COPY requirements-songformer.txt .
+COPY scripts/fetch_songformer.py scripts/fetch_songformer.py
+RUN if [ "$WITH_SONGFORMER" = "1" ]; then \
+        pip install torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cpu \
+        && pip install -r requirements-songformer.txt torch==2.5.1 torchaudio==2.5.1 torchvision==0.20.1 \
+        && python scripts/fetch_songformer.py; \
+    fi
+
 COPY server ./server
 COPY scripts ./scripts
 COPY shared ./shared
 
 # BTC chord model (code + pretrained weights). Without it the app falls back to the simpler template recognizer.
-# WITH_SONGFORMER=1 also adds the SongFormer structure model for Accurate mode (about 3 GB more).
-ARG WITH_SONGFORMER=0
-COPY requirements-songformer.txt .
-RUN if [ "$WITH_SONGFORMER" = "1" ]; then \
-        pip install -r requirements-songformer.txt torch==2.5.1 torchaudio==2.5.1 \
-        && python scripts/setup_models.py --songformer; \
-    else python scripts/setup_models.py; fi
+RUN python scripts/setup_models.py
 
 EXPOSE 5000
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "server.app:create_app()"]

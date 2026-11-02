@@ -30,10 +30,10 @@ def setup_btc() -> int:
 
 
 def setup_songformer() -> int:
+    target = DEFAULT_WEIGHTS_DIR / structure.DIRNAME
     if not structure.is_available(DEFAULT_WEIGHTS_DIR):
-        target = structure.download(DEFAULT_WEIGHTS_DIR)
-    else:
-        target = DEFAULT_WEIGHTS_DIR / structure.DIRNAME
+        from fetch_songformer import fetch  # needs huggingface_hub, which only the SongFormer setup installs
+        fetch(target)
     if structure.is_available(DEFAULT_WEIGHTS_DIR):
         print(f"SongFormer ready: {target}")
         return 0

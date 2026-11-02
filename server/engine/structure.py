@@ -15,7 +15,7 @@ import numpy as np
 
 log = logging.getLogger(__name__)
 
-REPO_ID = "ASLP-lab/SongFormer"
+FRONTEND_REPO = "facebook/wav2vec2-conformer-rope-large-960h-ft"  # its config.json is read when the model is built
 DIRNAME = "SongFormer"
 WEIGHTS_FILE = "model.safetensors"
 INPUT_SR = 24000          # the model's expected sampling rate
@@ -32,14 +32,13 @@ def is_available(weights_dir: Path) -> bool:
     return (Path(weights_dir) / DIRNAME / WEIGHTS_FILE).is_file()
 
 
-def download(weights_dir: Path) -> Path:
-    """Fetch the model code and weights (about 2.7 GB) into weights_dir/SongFormer."""
-    from huggingface_hub import snapshot_download
-    target = Path(weights_dir) / DIRNAME
-    snapshot_download(repo_id=REPO_ID, local_dir=str(target),
-                      # the two 100 MB files are a duplicate of what model.safetensors already holds
-                      ignore_patterns=["SongFormer.pt", "SongFormer.safetensors", "*.md", ".gitattributes"])
-    return target
+def _cache_frontend_config() -> None:
+    """The model reads a small config from the Hugging Face hub; keep a copy so it can then run offline."""
+    try:
+        from huggingface_hub import hf_hub_download
+        hf_hub_download(FRONTEND_REPO, "config.json")
+    except Exception as e:  # already cached, or the model fails later with a clear message
+        log.info("Could not refresh the SongFormer front-end config: %s", e)
 
 
 def _load(weights_dir: Path):
@@ -57,7 +56,8 @@ def _load(weights_dir: Path):
     if local not in sys.path:
         sys.path.insert(0, local)
     os.environ["SONGFORMER_LOCAL_DIR"] = local
-    # every file is already local; without this the model's config step retries network calls for minutes
+    _cache_frontend_config()
+    # every file is local now; without this the model's config step retries network calls for minutes
     os.environ.setdefault("HF_HUB_OFFLINE", "1")
     import torch
     from transformers import AutoModel
