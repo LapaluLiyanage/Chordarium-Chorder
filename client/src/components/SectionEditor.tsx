@@ -7,13 +7,15 @@ interface Props {
   index: number
   downbeats: number[]
   onApply(patch: { label: string; start?: number }): void
+  /** merge this section into its neighbour; omit when it is the only one */
+  onRemove?(): void
   onClose(): void
 }
 
 const SUGGESTED = ['Intro', 'Verse', 'Pre-chorus', 'Chorus', 'Bridge', 'Interlude', 'Solo', 'Outro']
 const clock = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`
 
-export function SectionEditor({ section, index, downbeats, onApply, onClose }: Props) {
+export function SectionEditor({ section, index, downbeats, onApply, onRemove, onClose }: Props) {
   const modalRef = useModalA11y<HTMLDivElement>(onClose)
   const [label, setLabel] = useState(section.label)
   // the first section always starts at the beginning of the song
@@ -46,6 +48,7 @@ export function SectionEditor({ section, index, downbeats, onApply, onClose }: P
         <div className="control">
           <button type="button" className="button primary"
             onClick={() => onApply({ label, ...(start !== null && index > 0 ? { start } : {}) })}>Apply</button>
+          {onRemove && <button type="button" className="button" onClick={onRemove}>Delete section</button>}
           <button type="button" className="button" onClick={onClose}>Cancel</button>
         </div>
       </div>

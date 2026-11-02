@@ -78,3 +78,39 @@ def test_late_unique_section_is_a_bridge():
 def test_no_repetition_falls_back_to_verses():
     names = label_sections([seg(0, 16, 0), seg(16, 32, 1), seg(32, 48, 2)])
     assert all(n.startswith("Verse") for n in names)
+
+
+def test_a_long_closing_section_is_not_an_outro():
+    # the closing 67 s of a 233 s song is a real part of the song, not a fade-out
+    names = label_sections([
+        seg(0, 40, 0), seg(40, 80, 1, energy=2.0), seg(80, 120, 0), seg(120, 160, 1, energy=2.0),
+        seg(160, 233, 2)])
+    assert names[-1] != "Outro"
+
+
+def test_a_short_closing_section_is_still_an_outro():
+    names = label_sections([
+        seg(0, 40, 0), seg(40, 80, 1, energy=2.0), seg(80, 120, 0), seg(120, 160, 1, energy=2.0),
+        seg(160, 176, 2, vocal=0.0)])
+    assert names[-1] == "Outro"
+
+
+def test_an_opening_that_is_most_of_a_quarter_of_the_song_is_not_an_intro():
+    names = label_sections([
+        seg(0, 70, 0, vocal=0.0), seg(70, 110, 1), seg(110, 150, 2, energy=2.0), seg(150, 190, 1),
+        seg(190, 230, 2, energy=2.0), seg(230, 260, 3)])
+    assert names[0] != "Intro"
+
+
+def test_a_short_part_before_the_chorus_is_a_pre_chorus():
+    names = label_sections([
+        seg(0, 16, 0), seg(16, 24, 1), seg(24, 40, 2, energy=2.0), seg(40, 56, 0), seg(56, 64, 1),
+        seg(64, 80, 2, energy=2.0), seg(80, 96, 3)])
+    assert names[:3] == ["Verse 1", "Pre-chorus", "Chorus"]
+    assert names[4] == "Pre-chorus"
+
+
+def test_neighbouring_parts_that_sound_the_same_become_one_section():
+    from server.engine.sections import _merge_neighbours
+    spans, groups = _merge_neighbours([(0, 8), (8, 16), (16, 24), (24, 32)], [0, 0, 1, 0])
+    assert spans == [(0, 16), (16, 24), (24, 32)] and groups == [0, 1, 0]

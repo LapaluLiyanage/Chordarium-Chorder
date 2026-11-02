@@ -27,11 +27,8 @@ function write(songId: string, sections: Section[] | null): void {
 export function useSectionEdits(
   songId: string,
   detected: Section[],
-): [Section[], (index: number, patch: { label?: string; start?: number }) => void, () => void] {
-  const [saved, setSaved] = useState<Section[] | null>(() => {
-    const stored = read(songId)
-    return stored && stored.length === detected.length ? stored : null
-  })
+): [Section[], (index: number, patch: { label?: string; start?: number }) => void, () => void, (change: (sections: Section[]) => Section[]) => void] {
+  const [saved, setSaved] = useState<Section[] | null>(() => read(songId))
   const sections = saved ?? detected
 
   const edit = useCallback((index: number, patch: { label?: string; start?: number }) => {
@@ -47,5 +44,14 @@ export function useSectionEdits(
     write(songId, null)
   }, [songId])
 
-  return [sections, edit, reset]
+  /** add or delete whole sections */
+  const change = useCallback((fn: (sections: Section[]) => Section[]) => {
+    setSaved((prev) => {
+      const next = fn(prev ?? detected)
+      write(songId, next)
+      return next
+    })
+  }, [songId, detected])
+
+  return [sections, edit, reset, change]
 }

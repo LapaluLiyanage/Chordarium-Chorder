@@ -11,6 +11,8 @@ interface Props {
   shift: number
   tonic: string
   error?: string | null
+  /** hide the "every matching chord" option (used when editing one slot of a bar) */
+  single?: boolean
   onApply(label: string, applyToAll: boolean): void
   onClose(): void
 }
@@ -24,7 +26,7 @@ function parsesCleanly(label: string): boolean {
   }
 }
 
-export function ChordEditor({ segment, shift, tonic, error, onApply, onClose }: Props) {
+export function ChordEditor({ segment, shift, tonic, error, single, onApply, onClose }: Props) {
   const modalRef = useModalA11y<HTMLDivElement>(onClose)
   const shown = transpose(parse(segment.label), shift)
   const [root, setRoot] = useState(shown?.root ?? 0)
@@ -77,10 +79,12 @@ export function ChordEditor({ segment, shift, tonic, error, onApply, onClose }: 
             {Array.from({ length: 12 }, (_, pc) => <option key={pc} value={pc}>{rootNameInKey(pc, tonic)}</option>)}
           </select>
         </label>
-        <label>
-          <input type="checkbox" checked={applyToAll} onChange={(e) => setApplyToAll(e.target.checked)} />
-          {' '}Apply to every matching chord
-        </label>
+        {!single && (
+          <label>
+            <input type="checkbox" checked={applyToAll} onChange={(e) => setApplyToAll(e.target.checked)} />
+            {' '}Apply to every matching chord
+          </label>
+        )}
         <div className="control">
           <button type="button" className="button primary" onClick={applyManual}>Apply</button>
           <button type="button" className="button" onClick={() => onApply('N', applyToAll)}>No chord</button>

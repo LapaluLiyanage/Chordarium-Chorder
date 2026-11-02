@@ -4,6 +4,7 @@ import { api } from '../api'
 import { click } from '../audio'
 import { AccuracyNotice } from '../components/AccuracyNotice'
 import { AudioDeck } from '../components/AudioDeck'
+import { BarEditor } from '../components/BarEditor'
 import { ChordEditor } from '../components/ChordEditor'
 import { ChordLane } from '../components/ChordLane'
 import { Controls, type LoopRange as AbLoop } from '../components/Controls'
@@ -21,8 +22,8 @@ import { RATES, useViewSettings } from '../hooks/useViewSettings'
 import { useAudioPlayer } from '../hooks/useAudioPlayer'
 import { useYouTubePlayer } from '../hooks/useYouTubePlayer'
 import { isUploadId, splitTitle } from '../lib/songMeta'
-import { sectionAt } from '../sections'
-import { barAt, buildSheet } from '../sheet'
+import { removeSection, sectionAt, splitSection } from '../sections'
+import { barAt, buildSheet, type SheetBar } from '../sheet'
 import { activeIndex } from '../sync'
 import { formatKey, keySpelling, parse, render, simplify, transpose } from '../theory/chord'
 import type { ExportFormat, Song } from '../types'
@@ -69,9 +70,9 @@ function Tracker({ song }: { song: Song }) {
   const t = song.timeline
   const navigate = useNavigate()
   const [settings, update] = useViewSettings(song.id)
-  const [segments, applyOverride, resetOverrides] = useChordOverrides(song.id, t.segments)
+  const { segments, editChord, editRanges, reset: resetOverrides } = useChordOverrides(song.id, t.segments)
   const detectedSections = useMemo(() => t.sections ?? [], [t.sections])
-  const [sections, editSectionAt, resetSections] = useSectionEdits(song.id, detectedSections)
+  const [sections, editSectionAt, resetSections, changeSections] = useSectionEdits(song.id, detectedSections)
   const uploaded = isUploadId(t.video_id)
   const youtube = useYouTubePlayer('yt-player', uploaded ? null : t.video_id)
   const audio = useAudioPlayer('audio-player', uploaded ? api.songAudioUrl(song.id) : null)
@@ -80,6 +81,7 @@ function Tracker({ song }: { song: Song }) {
   const [editMode, setEditMode] = useState(false)
   const [editing, setEditing] = useState<number | null>(null)
   const [editingSection, setEditingSection] = useState<number | null>(null)
+  const [editingBar, setEditingBar] = useState<SheetBar | null>(null)
   const [exportFormat, setExportFormat] = useState<ExportFormat | null>(null)
   const [reanalyzing, setReanalyzing] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -191,7 +193,7 @@ function Tracker({ song }: { song: Song }) {
   function applyEdit(label: string, applyToAll: boolean) {
     if (editing === null) return
     try {
-      applyOverride(editing, label, applyToAll)
+      editChord(editing, label, applyToAll)
       setEditing(null)
       setActionError(null)
     } catch (e) {
@@ -210,6 +212,30 @@ function Tracker({ song }: { song: Song }) {
       setActionError(e instanceof Error ? e.message : String(e))
       setReanalyzing(false)
     }
+  }
+
+  function applyBarEdit(pieces: { start: number; end: number; label: string }[]) {
+    try {
+      editRanges(pieces)
+      setEditingBar(null)
+      setActionError(null)
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  /** split the section holding this time, then ask for the new section's name */
+  function startSectionAt(time: number) {
+    const next = splitSection(sections, time, 'New section')
+    if (next === sections) return
+    changeSections(() => next)
+    setEditingBar(null)
+    setEditingSection(next.findIndex((s) => Math.abs(s.start - time) < 0.001))
+  }
+
+  function deleteSection(index: number) {
+    changeSections((list) => removeSection(list, index))
+    setEditingSection(null)
   }
 
   function resetEdits() {
@@ -297,6 +323,8 @@ function Tracker({ song }: { song: Song }) {
           onTranspose={(d) => update({ transpose: settings.transpose + d })} simplify={settings.simplify}
           onSimplify={() => update({ simplify: !settings.simplify })} playing={playing} onTogglePlay={togglePlayback}
           currentBar={barAt(t.downbeats, time)} onSeekBar={(b) => seek(b.start)} loop={loopRange} onLoop={toggleSectionLoop}
+          editMode={editMode} onToggleEdit={() => setEditMode((m) => !m)} onEditBar={setEditingBar}
+          onEditSection={(sec) => setEditingSection(sec.index)}
           footer={
             <div className="export-links">
               <button type="button" onClick={() => setExportFormat('pdf')}>PDF</button>
@@ -313,7 +341,13 @@ function Tracker({ song }: { song: Song }) {
         {editingSection !== null && sections[editingSection] && (
           <SectionEditor section={sections[editingSection]} index={editingSection} downbeats={t.downbeats}
             onApply={(patch) => { editSectionAt(editingSection, patch); setEditingSection(null) }}
+            onRemove={sections.length > 1 ? () => deleteSection(editingSection) : undefined}
             onClose={() => setEditingSection(null)} />
+        )}
+        {editingBar !== null && (
+          <BarEditor bar={editingBar} beats={t.beats} segments={segments} shift={shift} tonic={tonic}
+            onApply={applyBarEdit} onNewSection={sections.length > 0 ? startSectionAt : undefined}
+            onClose={() => setEditingBar(null)} />
         )}
         {exportFormat !== null && (
           <ExportModal songId={song.id} title={t.title} timeline={{ ...t, segments, sections }} settings={settings}

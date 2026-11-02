@@ -16,6 +16,8 @@ export interface SheetBar {
 }
 
 export interface SheetSection {
+  /** position in the (sorted) section list, -1 for the single block of a song without sections */
+  index: number
   name: string
   color: string
   start: number
@@ -77,15 +79,21 @@ export function buildSheet(timeline: Grid, segments: Segment[], sections: Sectio
   const bars = buildBars(timeline, segments, opts)
   if (!bars.length) return []
   if (!sections.length) {
-    return [{ name: 'Song', color: SONG_COLOR, start: bars[0].start, end: bars[bars.length - 1].end, bars }]
+    return [{ index: -1, name: 'Song', color: SONG_COLOR, start: bars[0].start, end: bars[bars.length - 1].end, bars }]
   }
   const sorted = [...sections].sort((a, b) => a.start - b.start)
-  const out: SheetSection[] = sorted.map((s) => ({ name: s.label, color: sectionColor(s.label), start: s.start, end: s.end, bars: [] }))
+  const out: SheetSection[] = sorted.map((s, index) => ({ index, name: s.label, color: sectionColor(s.label), start: s.start, end: s.end, bars: [] }))
   for (const bar of bars) {
     const owner = out.find((s) => bar.start >= s.start - 1e-6 && bar.start < s.end - 1e-6) ?? out[out.length - 1]
     owner.bars.push(bar)
   }
   return out.filter((s) => s.bars.length > 0)
+}
+
+/** The time that splits a bar in half, on a beat (null when the bar has fewer than two beats). */
+export function barMidpoint(bar: { start: number; end: number }, beats: number[]): number | null {
+  const inside = beats.filter((b) => b >= bar.start - 1e-6 && b < bar.end - 1e-6)
+  return inside.length >= 2 ? inside[Math.floor(inside.length / 2)] : null
 }
 
 export function chunk<T>(items: T[], size: number): T[][] {

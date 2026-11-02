@@ -51,3 +51,22 @@ export function editSection(sections: Section[], index: number, patch: { label?:
   }
   return next
 }
+
+/** Start a new section at `time`, inside the section that contains it. */
+export function splitSection(sections: Section[], time: number, label: string): Section[] {
+  const i = sections.findIndex((s) => s.start < time - 0.001 && time < s.end - 0.001)
+  if (i < 0) return sections
+  const head = { ...sections[i], end: time }
+  const tail: Section = { start: time, end: sections[i].end, label: label.trim() || 'Section', uncertain: false }
+  return [...sections.slice(0, i), head, tail, ...sections.slice(i + 1)].map((s) => ({ ...s }))
+}
+
+/** Remove a section: the one before it takes over its time (the first section hands it to the next). */
+export function removeSection(sections: Section[], index: number): Section[] {
+  if (sections.length < 2 || !sections[index]) return sections
+  const next = sections.map((s) => ({ ...s }))
+  if (index === 0) next[1].start = next[0].start
+  else next[index - 1].end = next[index].end
+  next.splice(index, 1)
+  return next
+}

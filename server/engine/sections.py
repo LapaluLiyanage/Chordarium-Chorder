@@ -1,8 +1,7 @@
 """Song structure: split a track into bar-aligned sections and name them (Intro, Verse 1, Chorus...).
 
 Boundaries come from bar-level self-similarity (chroma + timbre). Sections that sound alike share a
-group, and the group's role (repetition, loudness, vocals) decides its name. Every guess is
-heuristic, so the labels are meant to be edited by the user.
+group, and the group's role (repetition, loudness, vocals) decides its name. Every guess is heuristic, so the labels are meant to be edited by the user.
 """
 import math
 from collections import defaultdict
@@ -19,6 +18,9 @@ BOUNDARY_FLOOR = 0.3
 LONG_FLOOR = 0.7
 GROUP_SIMILARITY = 0.45
 NO_VOCAL_LEVEL = 0.25        # vocal loudness relative to the song's sung parts
+INTRO_MAX_SHARE = 0.25       # an intro is a short opening, not a quarter-plus of the song
+OUTRO_MAX_SHARE = 0.18       # likewise an outro: longer closing sections are ordinary parts
+PRECHORUS_MAX_SHARE = 0.6    # a pre-chorus is clearly shorter than the chorus it leads into
 
 
 def _bar_features(y: np.ndarray, sr: int, bar_times: list[float], vocal_y: np.ndarray | None):
@@ -86,6 +88,19 @@ def _group(vectors: list[np.ndarray]) -> list[int]:
     return groups
 
 
+def _merge_neighbours(spans: list[tuple[int, int]], groups: list[int]) -> tuple[list[tuple[int, int]], list[int]]:
+    """Two sections in a row that sound the same are one section (a boundary inside a verse is noise)."""
+    out_spans: list[tuple[int, int]] = []
+    out_groups: list[int] = []
+    for span, g in zip(spans, groups):
+        if out_groups and out_groups[-1] == g:
+            out_spans[-1] = (out_spans[-1][0], span[1])
+        else:
+            out_spans.append(span)
+            out_groups.append(g)
+    return out_spans, out_groups
+
+
 def label_sections(segs: list[dict]) -> list[str]:
     """Names for sections given each one's start/end/group/energy and vocal level (None = unknown).
 
@@ -103,10 +118,11 @@ def label_sections(segs: list[dict]) -> list[str]:
         return s["vocal"] is not None and s["vocal"] < NO_VOCAL_LEVEL
 
     kinds: list[str | None] = [None] * n
-    if n >= 3 and count[segs[0]["group"]] == 1 and (segs[0]["end"] - segs[0]["start"]) <= 0.2 * total \
+    if n >= 3 and count[segs[0]["group"]] == 1 and (segs[0]["end"] - segs[0]["start"]) <= INTRO_MAX_SHARE * total \
             and (silent(segs[0]) or segs[0]["vocal"] is None):
         kinds[0] = "Intro"
-    if n >= 4 and kinds[-1] is None and (silent(segs[-1]) or count[segs[-1]["group"]] == 1):
+    if n >= 4 and kinds[-1] is None and (silent(segs[-1]) or count[segs[-1]["group"]] == 1) \
+            and (segs[-1]["end"] - segs[-1]["start"]) <= OUTRO_MAX_SHARE * total:
         kinds[-1] = "Outro"
     for i, s in enumerate(segs):
         if kinds[i] is None and silent(s):
@@ -133,6 +149,17 @@ def label_sections(segs: list[dict]) -> list[str]:
         else:
             kinds[i] = "Bridge"
 
+    # a short part right before a chorus, that is not itself the chorus, is the pre-chorus
+    if chorus_group is not None:
+        chorus_len = [s["end"] - s["start"] for i, s in enumerate(segs) if kinds[i] == "Chorus"]
+        typical = sum(chorus_len) / len(chorus_len)
+        leads = [i for i in range(n - 1) if kinds[i] == "Verse" and kinds[i + 1] == "Chorus"
+                 and segs[i]["end"] - segs[i]["start"] <= PRECHORUS_MAX_SHARE * typical]
+        verse_groups = {segs[i]["group"] for i in range(n) if kinds[i] == "Verse"}
+        if len(verse_groups) > 1:  # only when the song also has ordinary verses of another sound
+            for i in leads:
+                kinds[i] = "Pre-chorus"
+
     totals = defaultdict(int)
     for k in kinds:
         totals[k] += 1
@@ -140,7 +167,7 @@ def label_sections(segs: list[dict]) -> list[str]:
     names = []
     for k in kinds:
         seen[k] += 1
-        names.append(f"{k} {seen[k]}" if totals[k] > 1 and k not in ("Chorus",) else k)
+        names.append(f"{k} {seen[k]}" if totals[k] > 1 and k not in ("Chorus", "Pre-chorus") else k)
     return names
 
 
@@ -157,6 +184,7 @@ def detect_sections(y: np.ndarray, sr: int, downbeats: list[float], duration: fl
     starts = _boundaries(x, scale)
     spans = list(zip(starts, starts[1:] + [len(x)]))
     groups = _group([x[a:b].mean(axis=0) for a, b in spans])
+    spans, groups = _merge_neighbours(spans, groups)
     sung = None
     if vocal is not None:
         sung = max(float(np.percentile(vocal, 90)), 1e-9)

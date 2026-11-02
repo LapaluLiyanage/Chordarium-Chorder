@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { editSection, sectionAt, sectionKind } from './sections'
+import { editSection, removeSection, sectionAt, sectionKind, splitSection } from './sections'
 import type { Section } from './types'
 
 const sections: Section[] = [
@@ -46,5 +46,35 @@ describe('editSection', () => {
     expect(editSection(sections, 2, { start: 8 })[2].start).toBeGreaterThan(8)
     expect(editSection(sections, 2, { start: 99 })[2].start).toBeLessThan(40)
     expect(editSection(sections, 0, { start: 3 })[0].start).toBe(0)
+  })
+})
+
+describe('splitSection', () => {
+  it('starts a new section inside the one holding the time', () => {
+    const next = splitSection(sections, 16, 'Pre-chorus')
+    expect(next.map((s) => [s.start, s.end, s.label])).toEqual([
+      [0, 8, 'Intro'], [8, 16, 'Verse 1'], [16, 24, 'Pre-chorus'], [24, 40, 'Chorus'],
+    ])
+    expect(next[2].uncertain).toBe(false)
+  })
+
+  it('does nothing on an existing boundary', () => {
+    expect(splitSection(sections, 24, 'X')).toBe(sections)
+  })
+})
+
+describe('removeSection', () => {
+  it('lets the previous section take over the time', () => {
+    const next = removeSection(sections, 1)
+    expect(next.map((s) => [s.start, s.end, s.label])).toEqual([[0, 24, 'Intro'], [24, 40, 'Chorus']])
+  })
+
+  it('lets the next section take over when the first is removed', () => {
+    const next = removeSection(sections, 0)
+    expect(next.map((s) => [s.start, s.end, s.label])).toEqual([[0, 24, 'Verse 1'], [24, 40, 'Chorus']])
+  })
+
+  it('keeps the last remaining section', () => {
+    expect(removeSection([sections[0]], 0)).toEqual([sections[0]])
   })
 })
