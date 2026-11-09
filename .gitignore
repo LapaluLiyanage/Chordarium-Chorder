@@ -30,6 +30,4 @@ Thumbs.db
 !.env.example
 
 # Tooling
-.claude/
-CLAUDE.md
 *.log
