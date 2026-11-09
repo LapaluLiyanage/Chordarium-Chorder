@@ -102,3 +102,10 @@ the tracker page (this discards local edits).
 1. **Phase 1 (done)** — Flask + React app on Postgres with a separate worker:
    analyze, synced tracker, chord editor, exports.
 2. **Phase 2** — public web platform to publish and share chord sheets.
+
+## License
+
+Chordarium Chorder is released under the [MIT License](LICENSE), © 2026 Lapalu Liyanage.
+
+It builds on open-source projects (Demucs, Beat This!, SongFormer, librosa, Flask, React, three.js and
+others), each under its own license. Check them before redistributing or using this commercially.
